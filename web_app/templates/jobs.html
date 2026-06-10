@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ t(request, 'nav.jobs') }}</h1>
+<section class="panel">
+  <form method="get" class="form-row">
+    <label><span class="field-title">{{ t(request, 'table.status') }}</span>
+      <select name="status">
+        <option value="">{{ pick(request, 'All', '全部', 'ทั้งหมด') }}</option>
+        {% for status in ['queued', 'running', 'stopping', 'completed', 'failed', 'stopped'] %}
+        <option value="{{ status }}" {% if filters.status == status %}selected{% endif %}>{{ status }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label><span class="field-title">{{ t(request, 'table.type') }}</span>
+      <select name="kind">
+        <option value="">{{ pick(request, 'All', '全部', 'ทั้งหมด') }}</option>
+        <option value="uc_run" {% if filters.kind == 'uc_run' %}selected{% endif %}>{{ t(request, 'job.benchmark_kind') }}</option>
+        <option value="qdrant_init" {% if filters.kind == 'qdrant_init' %}selected{% endif %}>{{ t(request, 'job.import_kind') }}</option>
+      </select>
+    </label>
+    <label><span class="field-title">UC</span>
+      <select name="uc">
+        <option value="">{{ pick(request, 'All', '全部', 'ทั้งหมด') }}</option>
+        <option value="uc1" {% if filters.uc == 'uc1' %}selected{% endif %}>UC1</option>
+        <option value="uc2" {% if filters.uc == 'uc2' %}selected{% endif %}>UC2</option>
+      </select>
+    </label>
+    <button>{{ pick(request, 'Filter', '筛选', 'กรอง') }}</button>
+  </form>
+</section>
+<section class="panel">
+  {% if jobs %}
+  <form action="/api/jobs/delete" method="post" onsubmit="return confirm('{{ t(request, 'confirm.delete_selected') }}')">
+    <table>
+      <thead><tr><th class="select-col"><input type="checkbox" aria-label="{{ t(request, 'action.delete_selected') }}" onclick="var checked = this.checked; this.closest('table').querySelectorAll('tbody input[type=checkbox]').forEach(function(cb){ cb.checked = checked; })"></th><th>{{ t(request, 'table.job') }}</th><th>{{ t(request, 'table.type') }}</th><th>UC</th><th>{{ t(request, 'table.status') }}</th><th>{{ t(request, 'table.dataset') }}</th><th>{{ t(request, 'table.started') }}</th><th>{{ t(request, 'table.finished') }}</th><th></th></tr></thead>
+      <tbody>
+      {% for job in jobs %}
+      <tr>
+        <td><input type="checkbox" name="job_ids" value="{{ job.job_id }}" aria-label="{{ job.job_id }}"></td>
+        <td>{{ job.job_id }}</td>
+        <td>{{ t(request, 'job.import_kind') if job.kind == 'qdrant_init' else t(request, 'job.benchmark_kind') }}</td>
+        <td>{{ job.uc or '-' }}</td>
+        <td><span class="badge {{ job.status }}">{{ job.status }}</span></td>
+        <td>{{ job.dataset_id }}</td>
+        <td>{{ job.started_at or job.created_at }}</td>
+        <td>{{ job.finished_at or '-' }}</td>
+        <td><a href="/jobs/{{ job.job_id }}">{{ t(request, 'table.details') }}</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="table-actions"><button class="danger" type="submit">{{ t(request, 'action.delete_selected') }}</button></div>
+  </form>
+  {% else %}
+  <p class="muted">{{ t(request, 'home.no_jobs') }}</p>
+  {% endif %}
+</section>
+{% endblock %}

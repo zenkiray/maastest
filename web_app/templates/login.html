@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="{{ current_lang(request) }}" data-lang="{{ current_lang(request) }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ t(request, 'login.sign_in') }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-page">
+  <main class="login-card">
+    <div class="login-head">
+      <div class="login-brand"><img class="brand-logo" src="/static/assets/client-logo.jpg" alt="Client logo"><span>{{ t(request, 'brand') }}</span></div>
+      <div class="login-language">
+        <form class="language-switch inline" method="get" action="/login">
+          <input type="hidden" name="next" value="{{ next }}">
+          <label>
+            <span>{{ t(request, 'language') }}</span>
+            <select name="lang" onchange="this.form.submit()">
+              {% for lang in language_options(request) %}
+              <option value="{{ lang.code }}" {% if lang.selected %}selected{% endif %}>{{ lang.label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </form>
+      </div>
+    </div>
+    <h1>{{ t(request, 'login.title') }}</h1>
+    <p class="muted">{{ t(request, 'login.description') }}</p>
+    {% if error %}<div class="alert">{{ t(request, 'login.error') }}</div>{% endif %}
+    <form action="/api/login" method="post" class="form-grid single login-form">
+      <input type="hidden" name="next" value="{{ next }}">
+      <label><span class="field-title">{{ t(request, 'login.username') }}</span><input name="username" value="admin" autocomplete="username" required></label>
+      <label><span class="field-title">{{ t(request, 'login.password') }}</span><input type="password" name="password" autocomplete="current-password" required></label>
+      {% if show_default_hint %}<p class="hint login-default-hint">{{ t(request, 'login.default_hint') }}</p>{% endif %}
+      <button class="login-submit" type="submit">{{ t(request, 'login.sign_in') }}</button>
+    </form>
+  </main>
+</body>
+</html>

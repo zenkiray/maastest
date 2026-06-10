@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ pick(request, 'Knowledge Index Browser', '知识库索引浏览', 'เบราว์เซอร์ดัชนีความรู้') }}</h1>
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <strong>{{ pick(request, 'Current collection', '当前集合', 'Collection ปัจจุบัน') }}</strong>
+      <code>{{ collection or pick(request, 'Not configured', '未配置', 'ยังไม่ได้ตั้งค่า') }}</code>
+    </div>
+    <div class="actions">
+      <a class="button secondary" href="/datasets">{{ pick(request, 'Initialize index', '初始化索引', 'เริ่มต้นดัชนี') }}</a>
+      <a class="button secondary" href="/settings/config">{{ pick(request, 'Open settings', '打开设置', 'เปิดการตั้งค่า') }}</a>
+    </div>
+  </div>
+  <form method="get" class="form-grid">
+    <label><span class="field-title">Article ID</span><input name="article_id" value="{{ filters.article_id }}"></label>
+    <label><span class="field-title">{{ pick(request, 'Product', '产品', 'ผลิตภัณฑ์') }}</span><input name="product" value="{{ filters.product }}"></label>
+    <label><span class="field-title">{{ pick(request, 'Category', '分类', 'หมวดหมู่') }}</span><input name="category" value="{{ filters.category }}"></label>
+    <label><span class="field-title">Topic ID</span><input name="topic_id" value="{{ filters.topic_id }}"></label>
+    <label><span class="field-title">{{ pick(request, 'Page size', '每页数量', 'ขนาดหน้า') }}</span>
+      <input type="number" name="limit" value="{{ filters.limit }}" min="1" max="100">
+      <span>{{ pick(request, 'Changing filters starts from page 1.', '修改筛选条件后从第一页开始。', 'เมื่อเปลี่ยนตัวกรองจะเริ่มจากหน้าแรก') }}</span>
+    </label>
+    <button type="submit">{{ pick(request, 'Search from first page', '从第一页查询', 'ค้นจากหน้าแรก') }}</button>
+  </form>
+</section>
+{% if error %}<div class="alert">{{ error }}</div>{% endif %}
+<section class="panel">
+  <div class="section-head">
+    <h2>{{ pick(request, 'Knowledge Chunks', '知识片段', 'ชิ้นส่วนความรู้') }}</h2>
+    <span class="muted">{{ pick(request, 'Page', '第', 'หน้า') }} {{ pager.page }}, {{ points|length }} {{ pick(request, 'rows', '条', 'แถว') }}</span>
+  </div>
+  <table><thead><tr><th>Point ID</th><th>{{ pick(request, 'Article', '文章', 'บทความ') }}</th><th>{{ pick(request, 'Product', '产品', 'ผลิตภัณฑ์') }}</th><th>{{ pick(request, 'Category', '分类', 'หมวดหมู่') }}</th><th>{{ pick(request, 'Topic', '主题', 'หัวข้อ') }}</th><th>{{ pick(request, 'Text', '内容', 'ข้อความ') }}</th></tr></thead><tbody>
+  {% for p in points %}
+    <tr><td><code>{{ p.id }}</code></td><td>{{ p.payload.article_id }}</td><td>{{ p.payload.product }}</td><td>{{ p.payload.category }}</td><td>{{ p.payload.topic_id }}</td><td>{{ p.payload.text }}</td></tr>
+  {% else %}
+    <tr><td colspan="6" class="muted">{{ pick(request, 'No rows to display.', '暂无可展示数据。', 'ไม่มีข้อมูลให้แสดง') }}</td></tr>
+  {% endfor %}
+  </tbody></table>
+  <div class="pager">
+    <form method="get">
+      <input type="hidden" name="article_id" value="{{ filters.article_id }}"><input type="hidden" name="product" value="{{ filters.product }}"><input type="hidden" name="category" value="{{ filters.category }}"><input type="hidden" name="topic_id" value="{{ filters.topic_id }}"><input type="hidden" name="limit" value="{{ filters.limit }}"><input type="hidden" name="offset" value="{{ pager.prev_offset or '' }}"><input type="hidden" name="history" value="{{ pager.prev_history }}">
+      <button type="submit" {% if not pager.has_prev %}disabled{% endif %}>{{ pick(request, 'Previous page', '上一页', 'หน้าก่อนหน้า') }}</button>
+    </form>
+    <span>{{ pick(request, 'Page', '第', 'หน้า') }} {{ pager.page }}</span>
+    <form method="get">
+      <input type="hidden" name="article_id" value="{{ filters.article_id }}"><input type="hidden" name="product" value="{{ filters.product }}"><input type="hidden" name="category" value="{{ filters.category }}"><input type="hidden" name="topic_id" value="{{ filters.topic_id }}"><input type="hidden" name="limit" value="{{ filters.limit }}"><input type="hidden" name="offset" value="{{ pager.next_offset or '' }}"><input type="hidden" name="history" value="{{ pager.next_history }}">
+      <button type="submit" {% if not pager.has_next %}disabled{% endif %}>{{ pick(request, 'Next page', '下一页', 'หน้าถัดไป') }}</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

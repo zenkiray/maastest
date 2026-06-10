@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block content %}
+{% macro workflow_step(stage, extra_class='') -%}
+  <div class="workflow-step {{ stage.status }} {{ extra_class }}">
+    <div class="workflow-node" title="{{ t(request, 'type.' ~ stage.type.id, stage.type.label) }}">
+      <span class="stage-type-icon type-{{ stage.type.id }}"></span>
+    </div>
+    <div class="workflow-copy">
+      <strong>{{ t(request, 'stage.' ~ stage.id, stage.label) }}</strong>
+      <em>{{ t(request, 'type.' ~ stage.type.id, stage.type.label) }}</em>
+      {% if stage.duration_text %}<b>{{ stage.duration_text }}</b>{% endif %}
+    </div>
+  </div>
+{%- endmacro %}
+<section class="hero compact">
+  <h1>{{ t(request, uc ~ '.title') }}</h1>
+  <p>{{ t(request, uc ~ '.description') }}</p>
+</section>
+{% if not config_ready %}
+<section class="panel">
+  <div class="alert">{{ t(request, 'uc.settings_not_ready') }}</div>
+  <a class="button" href="/settings/config">{{ t(request, 'uc.open_settings') }}</a>
+</section>
+{% endif %}
+<section class="panel">
+  <h2>{{ t(request, 'uc.test_flow') }}</h2>
+  {% if flow_layout == 'uc2_parallel' and uc2_parallel %}
+  <div class="parallel-workflow workflow-preview">
+    {% if uc2_parallel.entry %}
+    <div class="parallel-edge parallel-entry">{{ workflow_step(uc2_parallel.entry, 'compact') }}</div>
+    {% endif %}
+    <div class="parallel-arrow" aria-hidden="true"></div>
+    <div class="parallel-zone">
+      <div class="parallel-zone-head">
+        <strong>{{ t(request, 'flow.parallel_specialist') }}</strong>
+      </div>
+      <div class="parallel-specialists">
+        {% for stage in uc2_parallel.specialists %}
+          {{ workflow_step(stage, 'compact') }}
+        {% endfor %}
+      </div>
+      <div class="account-branch">
+        <div class="account-branch-title">
+          <strong>{{ t(request, 'flow.account_branch') }}</strong>
+          <span>{{ t(request, 'flow.account_branch_help') }}</span>
+        </div>
+        <div class="account-branch-steps">
+          {% for stage in uc2_parallel.account_branch %}
+            {{ workflow_step(stage, 'compact branch-step') }}
+            {% if not loop.last %}<div class="account-branch-arrow" aria-hidden="true"></div>{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="parallel-arrow" aria-hidden="true"></div>
+    {% if uc2_parallel.final %}
+    <div class="parallel-edge parallel-final">{{ workflow_step(uc2_parallel.final, 'compact') }}</div>
+    {% endif %}
+    {% if uc2_parallel.post %}
+      {% for stage in uc2_parallel.post %}
+        <div class="parallel-arrow" aria-hidden="true"></div>
+        <div class="parallel-edge parallel-post">{{ workflow_step(stage, 'compact') }}</div>
+      {% endfor %}
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="workflow workflow-preview">
+    {% for stage in flow %}
+      {{ workflow_step(stage) }}
+      {% if not loop.last %}<div class="parallel-arrow {{ stage.status }}" aria-hidden="true"></div>{% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+<section class="panel">
+  <h2>{{ t(request, 'uc.start_test') }}</h2>
+  <form action="/api/jobs/start" method="post" class="form-grid uc-run-form">
+    <input type="hidden" name="uc" value="{{ uc }}">
+    <label><span class="field-title">{{ t(request, 'uc.dataset') }}</span>
+      <select name="dataset_id">
+        {% for d in datasets %}<option value="{{ d.dataset_id }}">{{ d.name }} ({{ d.dataset_id }})</option>{% endfor %}
+      </select>
+      <span>{{ t(request, 'uc.dataset_help') }}</span>
+    </label>
+    <label><span class="field-title">{{ t(request, 'uc.test_size') }}</span>
+      <select name="test_size">
+        {% if uc == 'uc1' %}
+        <option value="smoke">{{ pick(request, 'Smoke - 5 FAQ questions', '冒烟测试 - 5条FAQ问题', 'Smoke - คำถาม FAQ 5 ข้อ') }}</option>
+        <option value="standard">{{ pick(request, 'Standard - 20 FAQ questions', '标准测试 - 20条FAQ问题', 'Standard - คำถาม FAQ 20 ข้อ') }}</option>
+        <option value="full">{{ pick(request, 'Full - all FAQ questions', '全量测试 - 所有FAQ问题', 'Full - คำถาม FAQ ทั้งหมด') }}</option>
+        {% else %}
+        <option value="smoke">{{ pick(request, 'Smoke - 3 call transcripts', '冒烟测试 - 3条通话记录', 'Smoke - บันทึกสายสนทนา 3 รายการ') }}</option>
+        <option value="standard">{{ pick(request, 'Standard - 10 call transcripts', '标准测试 - 10条通话记录', 'Standard - บันทึกสายสนทนา 10 รายการ') }}</option>
+        <option value="full">{{ pick(request, 'Full - all call transcripts', '全量测试 - 所有通话记录', 'Full - บันทึกสายสนทนาทั้งหมด') }}</option>
+        {% endif %}
+      </select>
+      <span>{{ t(request, 'uc.test_size_help') }}</span>
+    </label>
+    <label><span class="field-title">{{ t(request, 'uc.load_level') }}</span>
+      <select name="load_level">
+        <option value="single">{{ t(request, 'option.single') }}</option>
+        <option value="moderate">{{ t(request, 'option.moderate') }}</option>
+        <option value="high">{{ t(request, 'option.high') }}</option>
+      </select>
+      <span>{{ t(request, 'uc.load_level_help') }}</span>
+    </label>
+    <label><span class="field-title">{{ t(request, 'uc.answer_mode') }}</span>
+      <select name="no_stream">
+        <option value="">{{ t(request, 'option.streaming') }}</option>
+        <option value="1">{{ t(request, 'option.no_stream') }}</option>
+      </select>
+      <span>{{ t(request, 'uc.answer_mode_help') }}</span>
+    </label>
+    <label><span class="field-title">{{ t(request, 'uc.dry_run') }}</span>
+      <select name="dry_run">
+        <option value="">{{ t(request, 'option.live') }}</option>
+        <option value="1">{{ t(request, 'option.dry') }}</option>
+      </select>
+      <span>{{ t(request, 'uc.dry_run_help') }}</span>
+    </label>
+    {% if uc == 'uc1' %}
+    <label><span class="field-title">{{ t(request, 'uc.evidence_ranking') }}</span>
+      <select name="no_reranker">
+        <option value="">{{ t(request, 'option.reranker_on') }}</option>
+        <option value="1">{{ t(request, 'option.reranker_off') }}</option>
+      </select>
+      <span>{{ t(request, 'uc.evidence_ranking_help') }}</span>
+    </label>
+    {% endif %}
+    <details class="advanced">
+      <summary>{{ t(request, 'uc.advanced') }}</summary>
+      <div class="form-grid">
+        <label><span class="field-title">{{ t(request, 'uc.timeout') }}</span><input type="number" name="timeout_seconds" value="120" min="10"><span>{{ t(request, 'uc.timeout_help') }}</span></label>
+      </div>
+    </details>
+    <button class="start-benchmark-button" type="submit" {% if not config_ready %}disabled{% endif %}>{{ t(request, 'uc.start_benchmark') }}</button>
+  </form>
+</section>
+{% endblock %}

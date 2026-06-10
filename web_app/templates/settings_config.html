@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ t(request, 'nav.settings') }}</h1>
+<section class="panel">
+  <p>{{ pick(request, 'Configure the services used by the benchmark portal. Changes are saved to config.local.yaml.', '配置测试门户使用的模型和服务，保存后写入 config.local.yaml。', 'ตั้งค่าบริการที่พอร์ทัลทดสอบใช้ และบันทึกลง config.local.yaml') }}</p>
+  {% if saved %}<div class="notice">{{ pick(request, 'Configuration saved.', '配置已保存。', 'บันทึกการตั้งค่าแล้ว') }}</div>{% endif %}
+  {% if error %}<div class="alert"><strong>{{ pick(request, 'Save failed', '保存失败', 'บันทึกไม่สำเร็จ') }}</strong><br>{{ error }}</div>{% endif %}
+  {% if errors %}
+    <div class="alert"><strong>{{ pick(request, 'Configuration needs attention', '配置需要处理', 'ต้องตรวจสอบการตั้งค่า') }}</strong><br>{% for e in errors %}{{ e }}<br>{% endfor %}</div>
+  {% else %}
+    <div class="notice">{{ pick(request, 'Configuration is ready for benchmark runs.', '当前配置可用于测试。', 'การตั้งค่าพร้อมสำหรับการทดสอบ') }}</div>
+  {% endif %}
+  <form action="/settings/config" method="post" class="form-grid single">
+  {% for section in sections %}
+    <details class="advanced" open>
+      {% set group = section.title %}
+      <summary>{{ group.split(' / ')[0] if current_lang(request) != 'zh' else group.split(' / ')[1] if ' / ' in group else group }}</summary>
+      <div class="form-grid">
+      {% for field in section.fields %}
+        <label>
+        <span class="field-title">{{ pick(request, field.label, field.zh, field.label) }}</span>
+        {% if field.type == 'bool' %}
+          <select name="{{ field.path }}">
+            <option value="true" {% if field.value == 'true' %}selected{% endif %}>{{ pick(request, 'Enabled', '启用', 'เปิดใช้งาน') }}</option>
+            <option value="false" {% if field.value != 'true' %}selected{% endif %}>{{ pick(request, 'Disabled', '停用', 'ปิดใช้งาน') }}</option>
+          </select>
+        {% elif field.type == 'select' %}
+          <select name="{{ field.path }}">
+            {% for opt in field.options %}
+            <option value="{{ opt }}" {% if field.value == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        {% elif field.type == 'json' %}
+          <textarea name="{{ field.path }}" rows="4">{{ field.value }}</textarea>
+        {% else %}
+          <input name="{{ field.path }}" value="{{ field.value }}" type="{{ 'password' if field.type == 'password' else field.type }}" {% if field.step %}step="{{ field.step }}"{% endif %}>
+        {% endif %}
+        <span>{{ pick(request, field.help, field.help_zh, field.help) }}</span>
+        </label>
+      {% endfor %}
+      </div>
+    </details>
+  {% endfor %}
+    <details class="advanced" open>
+    <summary>{{ pick(request, 'Token Pricing', 'Token 计价', 'ราคา Token') }}</summary>
+    <div class="form-grid">
+      <label><span class="field-title">{{ pick(request, 'Currency', '币种', 'สกุลเงิน') }}</span><input name="pricing.currency" value="{{ pricing.currency }}"><span>{{ pick(request, 'Used in reports.', '报告中展示的币种。', 'ใช้แสดงในรายงาน') }}</span></label>
+      <label><span class="field-title">{{ pick(request, 'Input price per 1M tokens', '输入单价（每 100 万 tokens）', 'ราคาต่อ 1M input tokens') }}</span><input type="number" step="0.000001" name="pricing.input_per_1m" value="{{ pricing.input_per_1m }}"><span>{{ pick(request, 'Unit: currency amount per 1,000,000 input tokens. Cost = input_tokens / 1,000,000 * this price.', '单位：每 1,000,000 输入 tokens 的金额。成本 = 输入 tokens / 1,000,000 * 该单价。', 'หน่วย: ราคาต่อ 1,000,000 input tokens') }}</span></label>
+      <label><span class="field-title">{{ pick(request, 'Output price per 1M tokens', '输出单价（每 100 万 tokens）', 'ราคาต่อ 1M output tokens') }}</span><input type="number" step="0.000001" name="pricing.output_per_1m" value="{{ pricing.output_per_1m }}"><span>{{ pick(request, 'Unit: currency amount per 1,000,000 output tokens. Cost = output_tokens / 1,000,000 * this price.', '单位：每 1,000,000 输出 tokens 的金额。成本 = 输出 tokens / 1,000,000 * 该单价。', 'หน่วย: ราคาต่อ 1,000,000 output tokens') }}</span></label>
+    </div>
+    </details>
+  <button class="settings-save-button" type="submit">{{ pick(request, 'Save settings', '保存配置', 'บันทึกการตั้งค่า') }}</button>
+  </form>
+</section>
+{% endblock %}

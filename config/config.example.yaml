@@ -1,0 +1,59 @@
+web:
+  username: "admin"
+  password: "admin"
+
+llm:
+  base_url: "https://example-llm-endpoint/v1"
+  api_key: "REPLACE_WITH_LLM_API_KEY"
+  model: "deepseek-v3.2"
+  organization: ""
+
+embedding:
+  base_url: "https://example-embedding-endpoint/v1"
+  api_key: "REPLACE_WITH_EMBEDDING_API_KEY"
+  model: "bge-m3"
+  params:
+    dimensions: 1024
+
+reranker:
+  enabled: true
+  base_url: "https://example-reranker-endpoint/v1"
+  path: "/rerank"
+  request_format: "openai"
+  api_key: "REPLACE_WITH_RERANKER_API_KEY"
+  model: "bge-reranker-v2-m3"
+  params:
+
+qdrant:
+  url: "http://localhost:6333"
+  collection_name: "maas_synthetic_benchmark"
+  api_key: "REPLACE_WITH_QDRANT_API_KEY_OR_LEAVE_EMPTY"
+  username: "REPLACE_WITH_QDRANT_USERNAME_OR_LEAVE_EMPTY"
+  password: "REPLACE_WITH_QDRANT_PASSWORD_OR_LEAVE_EMPTY"
+
+runtime:
+  output_dir: "runs"
+  timeout_seconds: 120
+  concurrency: 4
+  concurrency_levels: [1, 4, 16, 64]
+  runs_per_platform: 2
+  platform_label: "gcp_or_huawei"
+  top_k: 5
+  rerank_top_n: 3
+  max_tokens: 1200
+  temperature: 0.2
+  request_delay_seconds: 0.0
+  qdrant_vector_size: 1024
+  stream: true
+
+metrics:
+  record_per_call_logs: true
+  aggregate_percentiles: [50, 95]
+  record_usage_tokens: true
+  record_ttft_tpot: true
+  record_error_rate: true
+
+pricing:
+  input_per_1m: 0.0
+  output_per_1m: 0.0
+  currency: "USD"

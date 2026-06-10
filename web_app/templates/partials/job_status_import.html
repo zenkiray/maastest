@@ -1,0 +1,50 @@
+{% macro flow_message(flow) -%}
+  {% if flow.last_message_stage %}{{ t(request, 'stage.' ~ flow.last_message_stage, flow.last_message) }}{% else %}{{ flow.last_message or '-' }}{% endif %}
+{%- endmacro %}
+<section class="panel" data-status="{{ job.status }}">
+  <div class="job-status-head">
+    <div class="status-line">
+      <span class="badge {{ job.status }}">{{ job.status }}</span>
+      <span>{{ t(request, 'job.import_kind') }}</span>
+      {% if platform_label is defined and platform_label %}<span class="platform-badge"><small>{{ pick(request, 'Platform', '平台', 'แพลตฟอร์ม') }}</small><strong>{{ platform_label|upper }}</strong></span>{% endif %}
+      <span>{{ job.started_at or job.created_at }}</span>
+    </div>
+    <div class="job-head-actions">
+    {% if job.status in ['queued', 'running', 'stopping'] %}
+    <form action="/api/jobs/{{ job.job_id }}/stop" method="post" onsubmit="return confirm('{{ t(request, 'job.stop_import_confirm') }}')">
+      <button type="submit" class="danger" {% if job.status == 'stopping' %}disabled{% endif %}>{{ t(request, 'job.stop_import') }}</button>
+    </form>
+    {% endif %}
+    <form action="/api/jobs/{{ job.job_id }}/delete" method="post" onsubmit="return confirm('{{ t(request, 'confirm.delete_job') }}')">
+      <button type="submit" class="danger">{{ t(request, 'action.delete_this') }}</button>
+    </form>
+    </div>
+  </div>
+
+  <dl class="kv">
+    <dt>{{ t(request, 'job.dataset') }}</dt><dd>{{ job.dataset_id }}</dd>
+    <dt>{{ t(request, 'job.import_mode') }}</dt><dd>{{ job.mode or '-' }}</dd>
+    <dt>{{ t(request, 'job.collection') }}</dt><dd>{{ flow.import.collection or '-' }}</dd>
+    <dt>{{ t(request, 'job.progress') }}</dt><dd>{{ flow.import.imported_chunks }}{% if flow.import.total_chunks %}/{{ flow.import.total_chunks }}{% endif %}</dd>
+    <dt>{{ t(request, 'job.message') }}</dt><dd>{{ flow_message(flow) }}</dd>
+  </dl>
+
+  {% if job.stop_message %}<div class="notice warn">{{ job.stop_message }}</div>{% endif %}
+
+  <h2>{{ t(request, 'job.import_progress') }}</h2>
+  <div class="import-progress">
+    <div class="progress-meter"><span style="width: {{ flow.import.percent }}%"></span></div>
+    <div class="import-stats">
+      <div><span>{{ t(request, 'job.imported_chunks') }}</span><b>{{ flow.import.imported_chunks }}</b></div>
+      <div><span>{{ t(request, 'job.total_chunks') }}</span><b>{{ flow.import.total_chunks or '-' }}</b></div>
+      <div><span>{{ t(request, 'job.articles') }}</span><b>{{ flow.import.articles or '-' }}</b></div>
+      <div><span>{{ t(request, 'job.progress') }}</span><b>{{ flow.import.percent }}%</b></div>
+    </div>
+  </div>
+
+  <details class="technical">
+    <summary>{{ t(request, 'job.technical_details') }}</summary>
+    <dl class="kv"><dt>{{ pick(request, 'Config', '配置', 'การตั้งค่า') }}</dt><dd>{{ job.config }}</dd><dt>Log</dt><dd>{{ job.log_path or '-' }}</dd></dl>
+    <h2>{{ t(request, 'job.log_tail') }}</h2><pre class="log">{{ log or 'Waiting for output...' }}</pre>
+  </details>
+</section>

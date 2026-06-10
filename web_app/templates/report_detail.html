@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% block content %}
+{% set m = data.required_metrics %}
+{% set error_pct = ((m.error_rate or 0) * 100) %}
+{% set latency_p95 = (m.latency.p95 or 0) %}
+{% set latency_mean_pct = (((m.latency.mean or 0) / latency_p95 * 100) if latency_p95 else 0) %}
+{% set latency_p50_pct = (((m.latency.p50 or 0) / latency_p95 * 100) if latency_p95 else 0) %}
+{% set token_total = (m.total_tokens.sum or 0) %}
+{% set input_pct = (((m.input_tokens.sum or 0) / token_total * 100) if token_total else 0) %}
+{% set output_pct = (((m.output_tokens.sum or 0) / token_total * 100) if token_total else 0) %}
+{% set cost_total = (data.cost.total or 0) %}
+{% set input_cost_pct = (((data.cost.input or 0) / cost_total * 100) if cost_total else 0) %}
+{% set output_cost_pct = (((data.cost.output or 0) / cost_total * 100) if cost_total else 0) %}
+<h1>{{ pick(request, 'Report', '报告', 'รายงาน') }} {{ report.job_id }}</h1>
+<div class="platform-banner" data-platform="{{ platform_label }}">
+  <span>{{ pick(request, 'Testing Platform', '测试平台', 'แพลตฟอร์มทดสอบ') }}</span>
+  <strong>{{ platform_label|upper }}</strong>
+</div>
+<div class="report-actions">
+  <a class="button" href="/reports/{{ report.job_id }}/pdf">{{ pick(request, 'Export PDF', '导出 PDF', 'ส่งออก PDF') }}</a>
+  <form action="/api/reports/{{ report.job_id }}/delete" method="post" onsubmit="return confirm('{{ t(request, 'confirm.delete_report') }}')">
+    <button class="danger" type="submit">{{ t(request, 'action.delete_this') }}</button>
+  </form>
+</div>
+<div class="report-watermark-surface" data-platform="{{ platform_label|upper }}">
+<div class="grid four report-overview-grid">
+  <section class="panel report-kpi-card"><span class="kpi-icon">#</span><div><h3>{{ pick(request, 'Requests', '请求数', 'จำนวนคำขอ') }}</h3><div class="metric">{{ m.requests }}</div></div></section>
+  <section class="panel report-kpi-card"><span class="kpi-icon">!</span><div><h3>{{ pick(request, 'Error Rate', '错误率', 'อัตราข้อผิดพลาด') }}</h3><div class="metric">{{ '%.1f%%'|format(error_pct) }}</div></div></section>
+  <section class="panel report-kpi-card"><span class="kpi-icon">P95</span><div><h3>Latency P95</h3><div class="metric">{{ '%.2fs'|format((m.latency.p95 or 0)/1000) }}</div></div></section>
+  <section class="panel report-kpi-card"><span class="kpi-icon">$</span><div><h3>{{ pick(request, 'Cost', '成本', 'ต้นทุน') }}</h3><div class="metric">{{ data.cost.currency }} {{ '%.4f'|format(data.cost.total) }}</div></div></section>
+</div>
+
+<section class="panel">
+  <div class="report-section-head">
+    <div>
+      <h2>{{ pick(request, 'Key Metrics', '关键指标', 'ตัวชี้วัดหลัก') }}</h2>
+      <p class="hint">{{ pick(request, 'Focus view of latency, streaming response, token usage, cost, and run health.', '聚焦展示延迟、流式响应、Token、成本和运行健康度。', 'มุมมองสรุป latency, streaming, token, cost และสถานะการรัน') }}</p>
+    </div>
+    <span class="report-chip">{{ m.throughput_label }}</span>
+  </div>
+  <div class="report-metric-dashboard">
+    <section class="metric-visual-card health">
+      <div class="metric-visual-icon">✓</div>
+      <div>
+        <h3>{{ pick(request, 'Run Health', '运行健康度', 'สุขภาพการรัน') }}</h3>
+        <div class="donut" style="--value: {{ error_pct }};"><span>{{ '%.1f'|format(error_pct) }}%</span></div>
+        <p>{{ m.completed }}/{{ m.requests }} {{ pick(request, 'completed', '已完成', 'สำเร็จ') }} · {{ m.errors }} {{ pick(request, 'errors', '异常', 'ผิดพลาด') }}</p>
+      </div>
+    </section>
+    <section class="metric-visual-card latency">
+      <div class="metric-visual-icon">⚡</div>
+      <div>
+        <h3>{{ pick(request, 'Latency Distribution', '延迟分布', 'การกระจาย latency') }}</h3>
+        <div class="bar-row"><span>{{ pick(request, 'Mean', '平均', 'เฉลี่ย') }}</span><b><i style="width: {{ '%.2f'|format(latency_mean_pct) }}%"></i></b><em>{{ '%.2fs'|format((m.latency.mean or 0)/1000) }}</em></div>
+        <div class="bar-row"><span>P50</span><b><i style="width: {{ '%.2f'|format(latency_p50_pct) }}%"></i></b><em>{{ '%.2fs'|format((m.latency.p50 or 0)/1000) }}</em></div>
+        <div class="bar-row strong"><span>P95</span><b><i style="width: 100%"></i></b><em>{{ '%.2fs'|format((m.latency.p95 or 0)/1000) }}</em></div>
+        <small>{{ pick(request, 'End-to-end successful requests.', '端到端成功请求。', 'คำขอที่สำเร็จแบบ end-to-end') }}</small>
+      </div>
+    </section>
+    <section class="metric-visual-card streaming">
+      <div class="metric-visual-icon">↯</div>
+      <div>
+        <h3>{{ pick(request, 'Streaming Response', '流式响应', 'การตอบกลับแบบ streaming') }}</h3>
+        <div class="split-metrics">
+          <div><span>TTFT P95</span><b>{{ '%.2fs'|format((m.ttft.p95 or 0)/1000) }}</b></div>
+          <div><span>TPOT P95</span><b>{{ '%.4f'|format(m.tpot.p95 or 0) }}</b><small>ms/token</small></div>
+        </div>
+        {% if report.params and report.params.no_stream %}<p>{{ pick(request, 'No-stream mode: TTFT/TPOT are not formal comparison metrics.', '非流式模式：TTFT/TPOT 不作为正式对比指标。', 'โหมด no-stream: TTFT/TPOT ไม่ใช่ตัวชี้วัดเปรียบเทียบอย่างเป็นทางการ') }}</p>{% endif %}
+      </div>
+    </section>
+    <section class="metric-visual-card tokens">
+      <div class="metric-visual-icon">◫</div>
+      <div>
+        <h3>{{ pick(request, 'Token & Cost', 'Token 与成本', 'Token และต้นทุน') }}</h3>
+        <div class="cost-pie-grid">
+          <div class="split-pie-card">
+            <div class="split-pie" style="--input: {{ '%.2f'|format(input_pct) }};"><span>{{ '%.1f%%'|format(input_pct) }}</span></div>
+            <strong>{{ pick(request, 'Token split', 'Token 占比', 'Token split') }}</strong>
+            <small>Input {{ m.input_tokens.sum }} / Output {{ m.output_tokens.sum }}</small>
+          </div>
+          <div class="split-pie-card">
+            <div class="split-pie cost" style="--input: {{ '%.2f'|format(input_cost_pct) }};"><span>{{ '%.1f%%'|format(input_cost_pct) }}</span></div>
+            <strong>{{ pick(request, 'Cost split', '成本占比', 'Cost split') }}</strong>
+            <small>{{ data.cost.currency }} {{ '%.6f'|format(data.cost.input or 0) }} / {{ data.cost.currency }} {{ '%.6f'|format(data.cost.output or 0) }}</small>
+          </div>
+        </div>
+        <div class="legend-inline"><span><i class="input"></i>Input {{ m.input_tokens.sum }}</span><span><i class="output"></i>Output {{ m.output_tokens.sum }}</span></div>
+        <div class="price-note">{{ pick(request, 'Price per 1M tokens', '每 100 万 tokens 单价', 'ราคาต่อ 1M tokens') }}: Input {{ data.pricing.currency }} {{ '%.6f'|format(data.pricing.input_per_1m or 0) }} · Output {{ data.pricing.currency }} {{ '%.6f'|format(data.pricing.output_per_1m or 0) }}</div>
+        <div class="cost-callout">{{ data.cost.currency }} {{ '%.6f'|format(m.cost_per_run or 0) }} <span>{{ pick(request, 'total run cost, recalculated with current pricing', '按当前单价重新计算的本次总成本', 'ต้นทุนรวมคำนวณจากราคาปัจจุบัน') }}</span></div>
+      </div>
+    </section>
+  </div>
+  <details class="metrics-detail">
+    <summary>{{ pick(request, 'Detailed metric table', '详细指标表', 'ตารางตัวชี้วัดละเอียด') }}</summary>
+    <table>
+      <tbody>
+        <tr><th>{{ pick(request, 'Metric', '指标', 'ตัวชี้วัด') }}</th><th>{{ pick(request, 'Mean', '平均', 'ค่าเฉลี่ย') }}</th><th>P50</th><th>P95</th><th>{{ pick(request, 'Notes', '说明', 'หมายเหตุ') }}</th></tr>
+        <tr><td>{{ pick(request, 'Latency', '端到端延迟', 'Latency') }}</td><td>{{ '%.2fs'|format((m.latency.mean or 0)/1000) }}</td><td>{{ '%.2fs'|format((m.latency.p50 or 0)/1000) }}</td><td>{{ '%.2fs'|format((m.latency.p95 or 0)/1000) }}</td><td>{{ pick(request, 'Successful requests only', '仅成功请求', 'เฉพาะคำขอที่สำเร็จ') }}</td></tr>
+        <tr><td>TTFT</td><td>{{ '%.2fs'|format((m.ttft.mean or 0)/1000) }}</td><td>{{ '%.2fs'|format((m.ttft.p50 or 0)/1000) }}</td><td>{{ '%.2fs'|format((m.ttft.p95 or 0)/1000) }}</td><td>{% if report.params and report.params.no_stream %}{{ pick(request, 'N/A for formal comparison when no-stream', '非流式不作为正式指标', 'ไม่ใช้เทียบอย่างเป็นทางการเมื่อ no-stream') }}{% else %}{{ pick(request, 'Client-side streaming metric', '客户端流式指标', 'ตัวชี้วัด streaming ฝั่ง client') }}{% endif %}</td></tr>
+        <tr><td>TPOT</td><td>{{ '%.4f'|format(m.tpot.mean or 0) }} ms/token</td><td>{{ '%.4f'|format(m.tpot.p50 or 0) }} ms/token</td><td>{{ '%.4f'|format(m.tpot.p95 or 0) }} ms/token</td><td>{{ pick(request, 'Primary network-robust latency metric', '主要抗网络影响指标', 'ตัวชี้วัด latency ที่ลดผลกระทบ network') }}</td></tr>
+        <tr><td>{{ pick(request, 'Input tokens', '输入 token', 'Input tokens') }}</td><td>{{ '%.0f'|format(m.input_tokens.mean or 0) }}</td><td>{{ '%.0f'|format(m.input_tokens.p50 or 0) }}</td><td>{{ '%.0f'|format(m.input_tokens.p95 or 0) }}</td><td>{{ pick(request, 'Total', '总计', 'รวม') }} {{ m.input_tokens.sum }}</td></tr>
+        <tr><td>{{ pick(request, 'Output tokens', '输出 token', 'Output tokens') }}</td><td>{{ '%.0f'|format(m.output_tokens.mean or 0) }}</td><td>{{ '%.0f'|format(m.output_tokens.p50 or 0) }}</td><td>{{ '%.0f'|format(m.output_tokens.p95 or 0) }}</td><td>{{ pick(request, 'Total', '总计', 'รวม') }} {{ m.output_tokens.sum }}</td></tr>
+        <tr><td>{{ pick(request, 'Total tokens', '总 token', 'Total tokens') }}</td><td>{{ '%.0f'|format(m.total_tokens.mean or 0) }}</td><td>{{ '%.0f'|format(m.total_tokens.p50 or 0) }}</td><td>{{ '%.0f'|format(m.total_tokens.p95 or 0) }}</td><td>{{ pick(request, 'Total', '总计', 'รวม') }} {{ m.total_tokens.sum }}</td></tr>
+        <tr><td>{{ pick(request, 'Cost', '成本', 'ต้นทุน') }} {{ m.cost_unit_label }}</td><td>{{ data.cost.currency }} {{ '%.6f'|format(m.cost_per_item.mean or 0) }}</td><td>{{ data.cost.currency }} {{ '%.6f'|format(m.cost_per_item.p50 or 0) }}</td><td>{{ data.cost.currency }} {{ '%.6f'|format(m.cost_per_item.p95 or 0) }}</td><td>{{ pick(request, 'Per-token price input by operator', '按用户配置 token 单价计算', 'คำนวณจากราคา token ที่ผู้ใช้ตั้งค่า') }}</td></tr>
+        <tr><td>{{ pick(request, 'Input cost', '输入成本', 'Input cost') }}</td><td colspan="3">{{ data.cost.currency }} {{ '%.6f'|format(data.cost.input or 0) }}</td><td>{{ pick(request, 'Recalculated with current input token price.', '按当前输入 token 单价重新计算。', 'คำนวณจากราคา input token ปัจจุบัน') }}</td></tr>
+        <tr><td>{{ pick(request, 'Output cost', '输出成本', 'Output cost') }}</td><td colspan="3">{{ data.cost.currency }} {{ '%.6f'|format(data.cost.output or 0) }}</td><td>{{ pick(request, 'Recalculated with current output token price.', '按当前输出 token 单价重新计算。', 'คำนวณจากราคา output token ปัจจุบัน') }}</td></tr>
+        <tr><td>{{ pick(request, 'Cost per 1K items', '每 1000 条成本', 'ต้นทุนต่อ 1K รายการ') }}</td><td colspan="3">{{ data.cost.currency }} {{ '%.6f'|format(m.cost_per_1k_items or 0) }}</td><td>{{ pick(request, 'Items = request or transcript', '条目为请求或通话', 'รายการคือ request หรือ transcript') }}</td></tr>
+        <tr><td>{{ pick(request, 'Cost per run', '本次运行总成本', 'ต้นทุนต่อรอบ') }}</td><td colspan="3">{{ data.cost.currency }} {{ '%.6f'|format(m.cost_per_run or 0) }}</td><td>{{ m.batch_discount }}</td></tr>
+      </tbody>
+    </table>
+  </details>
+</section>
+
+{% if m.uc == 'uc1' %}
+<section class="panel">
+  <div class="report-section-head">
+    <div>
+      <h2>{{ pick(request, 'UC1 LLM-only vs End-to-end', 'UC1 模型调用与端到端对照', 'UC1 LLM-only เทียบกับ End-to-end') }}</h2>
+      <p class="hint">{{ pick(request, 'Bar comparison shows model-call time versus the full RAG path including embedding, retrieval, reranking, and answer generation.', '柱状图对比模型调用耗时与完整 RAG 链路耗时，完整链路包含 embedding、检索、重排序和生成。', 'กราฟแท่งเปรียบเทียบเวลา LLM-only กับ RAG end-to-end') }}</p>
+    </div>
+    <span class="report-chip">UC1 RAG</span>
+  </div>
+  {% set llm_latency_p50 = (m.uc1_llm_latency.p50 or 0) if m.has_uc1_llm_metrics else 0 %}
+  {% set llm_latency_p95 = (m.uc1_llm_latency.p95 or 0) if m.has_uc1_llm_metrics else 0 %}
+  {% set llm_ttft_p50 = (m.uc1_llm_ttft.p50 or 0) if m.has_uc1_llm_metrics else 0 %}
+  {% set llm_ttft_p95 = (m.uc1_llm_ttft.p95 or 0) if m.has_uc1_llm_metrics else 0 %}
+  {% set llm_tpot_p50 = (m.uc1_llm_tpot.p50 or 0) if m.has_uc1_llm_metrics else 0 %}
+  {% set llm_tpot_p95 = (m.uc1_llm_tpot.p95 or 0) if m.has_uc1_llm_metrics else 0 %}
+  {% set latency_max = [m.latency.p95 or 0, llm_latency_p95, 1]|max %}
+  {% set ttft_max = [m.ttft.p95 or 0, llm_ttft_p95, 1]|max %}
+  {% set tpot_max = [m.tpot.p95 or 0, llm_tpot_p95, 1]|max %}
+  <div class="uc1-chart-legend">
+    <span><i class="llm"></i>LLM-only</span>
+    <span><i class="e2e"></i>End-to-end</span>
+  </div>
+  <div class="uc1-grouped-chart-grid">
+    <article class="grouped-chart-card">
+      <header><h3>Latency</h3><span>seconds</span></header>
+      <div class="grouped-chart-plot">
+        <div class="grouped-bars">
+          <div class="bar-pair">
+            <div class="bar-wrap"><em>{% if m.has_uc1_llm_metrics %}{{ '%.2fs'|format(llm_latency_p50/1000) }}{% else %}N/A{% endif %}</em><b class="llm" style="height: {{ '%.2f'|format((llm_latency_p50 / latency_max) * 100) }}%"></b></div>
+            <div class="bar-wrap"><em>{{ '%.2fs'|format((m.latency.p50 or 0)/1000) }}</em><b class="e2e" style="height: {{ '%.2f'|format(((m.latency.p50 or 0) / latency_max) * 100) }}%"></b></div>
+          </div>
+          <div class="bar-pair">
+            <div class="bar-wrap"><em>{% if m.has_uc1_llm_metrics %}{{ '%.2fs'|format(llm_latency_p95/1000) }}{% else %}N/A{% endif %}</em><b class="llm" style="height: {{ '%.2f'|format((llm_latency_p95 / latency_max) * 100) }}%"></b></div>
+            <div class="bar-wrap"><em>{{ '%.2fs'|format((m.latency.p95 or 0)/1000) }}</em><b class="e2e" style="height: {{ '%.2f'|format(((m.latency.p95 or 0) / latency_max) * 100) }}%"></b></div>
+          </div>
+        </div>
+        <div class="grouped-axis"><span>P50</span><span>P95</span></div>
+      </div>
+    </article>
+    <article class="grouped-chart-card">
+      <header><h3>TTFT</h3><span>seconds</span></header>
+      <div class="grouped-chart-plot">
+        <div class="grouped-bars">
+          <div class="bar-pair">
+            <div class="bar-wrap"><em>{% if m.has_uc1_llm_metrics %}{{ '%.2fs'|format(llm_ttft_p50/1000) }}{% else %}N/A{% endif %}</em><b class="llm" style="height: {{ '%.2f'|format((llm_ttft_p50 / ttft_max) * 100) }}%"></b></div>
+            <div class="bar-wrap"><em>{{ '%.2fs'|format((m.ttft.p50 or 0)/1000) }}</em><b class="e2e" style="height: {{ '%.2f'|format(((m.ttft.p50 or 0) / ttft_max) * 100) }}%"></b></div>
+          </div>
+          <div class="bar-pair">
+            <div class="bar-wrap"><em>{% if m.has_uc1_llm_metrics %}{{ '%.2fs'|format(llm_ttft_p95/1000) }}{% else %}N/A{% endif %}</em><b class="llm" style="height: {{ '%.2f'|format((llm_ttft_p95 / ttft_max) * 100) }}%"></b></div>
+            <div class="bar-wrap"><em>{{ '%.2fs'|format((m.ttft.p95 or 0)/1000) }}</em><b class="e2e" style="height: {{ '%.2f'|format(((m.ttft.p95 or 0) / ttft_max) * 100) }}%"></b></div>
+          </div>
+        </div>
+        <div class="grouped-axis"><span>P50</span><span>P95</span></div>
+      </div>
+    </article>
+    <article class="grouped-chart-card">
+      <header><h3>TPOT</h3><span>ms/token</span></header>
+      <div class="grouped-chart-plot">
+        <div class="grouped-bars">
+          <div class="bar-pair">
+            <div class="bar-wrap"><em>{% if m.has_uc1_llm_metrics %}{{ '%.4f'|format(llm_tpot_p50) }}{% else %}N/A{% endif %}</em><b class="llm" style="height: {{ '%.2f'|format((llm_tpot_p50 / tpot_max) * 100) }}%"></b></div>
+            <div class="bar-wrap"><em>{{ '%.4f'|format(m.tpot.p50 or 0) }}</em><b class="e2e" style="height: {{ '%.2f'|format(((m.tpot.p50 or 0) / tpot_max) * 100) }}%"></b></div>
+          </div>
+          <div class="bar-pair">
+            <div class="bar-wrap"><em>{% if m.has_uc1_llm_metrics %}{{ '%.4f'|format(llm_tpot_p95) }}{% else %}N/A{% endif %}</em><b class="llm" style="height: {{ '%.2f'|format((llm_tpot_p95 / tpot_max) * 100) }}%"></b></div>
+            <div class="bar-wrap"><em>{{ '%.4f'|format(m.tpot.p95 or 0) }}</em><b class="e2e" style="height: {{ '%.2f'|format(((m.tpot.p95 or 0) / tpot_max) * 100) }}%"></b></div>
+          </div>
+        </div>
+        <div class="grouped-axis"><span>P50</span><span>P95</span></div>
+      </div>
+    </article>
+  </div>
+  {% if not m.has_uc1_llm_metrics %}<div class="notice warn">{{ pick(request, 'LLM-only metrics are missing in this older report. Re-run UC1 to populate the comparison bars.', '这份旧报告没有 LLM-only 指标；重新运行 UC1 后会补齐对比柱状图。', 'รายงานเก่ายังไม่มี LLM-only ให้รัน UC1 ใหม่') }}</div>{% endif %}
+  <details class="metrics-detail">
+    <summary>{{ pick(request, 'Detailed UC1 comparison table', '详细 UC1 对照表', 'ตารางเปรียบเทียบ UC1') }}</summary>
+    <table>
+      <thead><tr><th>{{ pick(request, 'Scope', '范围', 'ขอบเขต') }}</th><th>Latency mean / p50 / p95</th><th>TTFT mean / p50 / p95</th><th>TPOT mean / p50 / p95</th></tr></thead>
+      <tbody>
+        <tr><td>{{ pick(request, 'End-to-end incl. retrieval', '端到端含检索', 'End-to-end รวม retrieval') }}</td><td>{{ '%.2fs'|format((m.latency.mean or 0)/1000) }} / {{ '%.2fs'|format((m.latency.p50 or 0)/1000) }} / {{ '%.2fs'|format((m.latency.p95 or 0)/1000) }}</td><td>{{ '%.2fs'|format((m.ttft.mean or 0)/1000) }} / {{ '%.2fs'|format((m.ttft.p50 or 0)/1000) }} / {{ '%.2fs'|format((m.ttft.p95 or 0)/1000) }}</td><td>{{ m.tpot.mean or 'N/A' }} / {{ m.tpot.p50 or 'N/A' }} / {{ m.tpot.p95 or 'N/A' }}</td></tr>
+        <tr><td>LLM-only</td>{% if m.has_uc1_llm_metrics %}<td>{{ '%.2fs'|format((m.uc1_llm_latency.mean or 0)/1000) }} / {{ '%.2fs'|format((m.uc1_llm_latency.p50 or 0)/1000) }} / {{ '%.2fs'|format((m.uc1_llm_latency.p95 or 0)/1000) }}</td><td>{{ '%.2fs'|format((m.uc1_llm_ttft.mean or 0)/1000) }} / {{ '%.2fs'|format((m.uc1_llm_ttft.p50 or 0)/1000) }} / {{ '%.2fs'|format((m.uc1_llm_ttft.p95 or 0)/1000) }}</td><td>{{ m.uc1_llm_tpot.mean or 'N/A' }} / {{ m.uc1_llm_tpot.p50 or 'N/A' }} / {{ m.uc1_llm_tpot.p95 or 'N/A' }}</td>{% else %}<td colspan="3">{{ pick(request, 'N/A - generated before LLM-only fields were added. Re-run UC1 to populate this metric.', '旧报告未记录 LLM-only 字段；重新运行 UC1 后会自动补齐。', 'N/A - รายงานเก่ายังไม่มี LLM-only ให้รัน UC1 ใหม่') }}</td>{% endif %}</tr>
+      </tbody>
+    </table>
+  </details>
+</section>
+{% endif %}
+
+<section class="panel">
+  <h2>{{ pick(request, 'Concurrency Summary', '并发档位汇总', 'สรุป concurrency') }}</h2>
+  <table>
+    <thead><tr><th>Run</th><th>{{ pick(request, 'Concurrency', '并发', 'Concurrency') }}</th><th>{{ pick(request, 'Requests', '请求数', 'คำขอ') }}</th><th>{{ pick(request, 'Completed', '已完成', 'สำเร็จ') }}</th><th>{{ pick(request, 'Errors', '异常', 'ข้อผิดพลาด') }}</th><th>{{ pick(request, 'Error Rate', '错误率', 'อัตราข้อผิดพลาด') }}</th><th>RPM</th><th>TPM</th><th>{{ m.throughput_label }}</th><th>Latency P50/P95</th><th>TTFT P50/P95</th><th>TPOT P50/P95</th></tr></thead>
+    <tbody>
+      {% for row in m.summary_rows %}
+      <tr>
+        <td>{{ row.run_index }}</td><td>{{ row.concurrency }}</td><td>{{ row.requests }}</td><td>{{ row.completed }}</td><td>{{ row.errors }}</td><td>{{ row.error_rate }}</td>
+        <td>{{ row.rpm }}</td><td>{{ row.tpm }}</td><td>{% if m.uc == 'uc2' %}{{ '%.2f'|format((row.rpm or 0) * 60) }}{% else %}{{ row.rpm }}{% endif %}</td>
+        <td>{{ '%.2fs'|format((row.latency_p50_ms or 0)/1000) }} / {{ '%.2fs'|format((row.latency_p95_ms or 0)/1000) }}</td>
+        <td>{{ '%.2fs'|format((row.ttft_p50_ms or 0)/1000) }} / {{ '%.2fs'|format((row.ttft_p95_ms or 0)/1000) }}</td>
+        <td>{{ row.tpot_p50_ms or 'N/A' }} / {{ row.tpot_p95_ms or 'N/A' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if m.agent_breakdown %}
+<section class="panel">
+  <div class="report-section-head">
+    <div>
+      <h2>{{ pick(request, 'UC2 Agent Metrics', 'UC2 Agent 指标', 'ตัวชี้วัด Agent ของ UC2') }}</h2>
+      <p class="hint">{{ pick(request, 'Visual agent comparison for platform-to-platform review, while keeping the exact values visible.', '用图表快速对比不同平台的 Agent 表现，同时保留完整数值。', 'เปรียบเทียบ Agent ระหว่างแพลตฟอร์มด้วยกราฟ พร้อมแสดงค่าจริง') }}</p>
+    </div>
+    <span class="report-chip">{{ m.agent_breakdown|length }} agents</span>
+  </div>
+  <div class="agent-chart-grid">
+    {% set chart_max = m.agent_chart_max if m.agent_chart_max is defined else {'calls': 1, 'errors': 1, 'latency_p95': 1, 'ttft_p95': 1, 'tpot_p95': 1, 'input_tokens': 1, 'output_tokens': 1, 'total_tokens': 1} %}
+    {% for agent in m.agent_breakdown %}
+    {% set calls_pct = ((agent.calls or 0) / chart_max.calls * 100) if chart_max.calls else 0 %}
+    {% set errors_pct = ((agent.errors or 0) / chart_max.errors * 100) if chart_max.errors else 0 %}
+    {% set latency_p50_pct = ((agent.latency.p50 or 0) / chart_max.latency_p95 * 100) if chart_max.latency_p95 else 0 %}
+    {% set latency_p95_pct = ((agent.latency.p95 or 0) / chart_max.latency_p95 * 100) if chart_max.latency_p95 else 0 %}
+    {% set ttft_p50_pct = ((agent.ttft.p50 or 0) / chart_max.ttft_p95 * 100) if chart_max.ttft_p95 else 0 %}
+    {% set ttft_p95_pct = ((agent.ttft.p95 or 0) / chart_max.ttft_p95 * 100) if chart_max.ttft_p95 else 0 %}
+    {% set tpot_p50_pct = ((agent.tpot.p50 or 0) / chart_max.tpot_p95 * 100) if chart_max.tpot_p95 else 0 %}
+    {% set tpot_p95_pct = ((agent.tpot.p95 or 0) / chart_max.tpot_p95 * 100) if chart_max.tpot_p95 else 0 %}
+    {% set input_pct_agent = ((agent.input_tokens.sum or 0) / chart_max.input_tokens * 100) if chart_max.input_tokens else 0 %}
+    {% set output_pct_agent = ((agent.output_tokens.sum or 0) / chart_max.output_tokens * 100) if chart_max.output_tokens else 0 %}
+    {% set total_pct_agent = ((agent.total_tokens.sum or 0) / chart_max.total_tokens * 100) if chart_max.total_tokens else 0 %}
+    <article class="agent-chart-card">
+      <header class="agent-card-head">
+        <span class="agent-icon">{{ loop.index }}</span>
+        <div>
+          <h3>{{ agent.agent }}</h3>
+          <p>{{ agent.completed }}/{{ agent.calls }} {{ pick(request, 'completed', '已完成', 'สำเร็จ') }} · {{ agent.errors }} {{ pick(request, 'errors', '异常', 'ผิดพลาด') }}</p>
+        </div>
+      </header>
+      <div class="agent-quick-stats">
+        <div><span>{{ pick(request, 'Calls', '调用', 'Calls') }}</span><b>{{ agent.calls }}</b></div>
+        <div><span>{{ pick(request, 'Errors', '异常', 'Errors') }}</span><b>{{ agent.errors }}</b></div>
+        <div><span>{{ pick(request, 'Total tokens', '总 token', 'Total tokens') }}</span><b>{{ agent.total_tokens.sum }}</b></div>
+      </div>
+      <div class="agent-metric-groups">
+        <div class="agent-chart-section">
+          <h4>{{ pick(request, 'Throughput Health', '执行健康度', 'สถานะการทำงาน') }}</h4>
+          <div class="agent-bar-row"><span>{{ pick(request, 'Calls', '调用', 'Calls') }}</span><b><i style="width: {{ '%.2f'|format(calls_pct) }}%"></i></b><em>{{ agent.calls }}</em></div>
+          <div class="agent-bar-row error"><span>{{ pick(request, 'Errors', '异常', 'Errors') }}</span><b><i style="width: {{ '%.2f'|format(errors_pct) }}%"></i></b><em>{{ agent.errors }}</em></div>
+        </div>
+        <div class="agent-chart-section">
+          <h4>{{ pick(request, 'Latency', '延迟', 'Latency') }}</h4>
+          <div class="agent-bar-row"><span>P50</span><b><i style="width: {{ '%.2f'|format(latency_p50_pct) }}%"></i></b><em>{{ '%.2fs'|format((agent.latency.p50 or 0)/1000) }}</em></div>
+          <div class="agent-bar-row strong"><span>P95</span><b><i style="width: {{ '%.2f'|format(latency_p95_pct) }}%"></i></b><em>{{ '%.2fs'|format((agent.latency.p95 or 0)/1000) }}</em></div>
+        </div>
+        <div class="agent-chart-section">
+          <h4>TTFT</h4>
+          <div class="agent-bar-row"><span>P50</span><b><i style="width: {{ '%.2f'|format(ttft_p50_pct) }}%"></i></b><em>{{ '%.2fs'|format((agent.ttft.p50 or 0)/1000) }}</em></div>
+          <div class="agent-bar-row strong"><span>P95</span><b><i style="width: {{ '%.2f'|format(ttft_p95_pct) }}%"></i></b><em>{{ '%.2fs'|format((agent.ttft.p95 or 0)/1000) }}</em></div>
+        </div>
+        <div class="agent-chart-section">
+          <h4>TPOT</h4>
+          <div class="agent-bar-row"><span>P50</span><b><i style="width: {{ '%.2f'|format(tpot_p50_pct) }}%"></i></b><em>{{ agent.tpot.p50 or 'N/A' }}</em></div>
+          <div class="agent-bar-row strong"><span>P95</span><b><i style="width: {{ '%.2f'|format(tpot_p95_pct) }}%"></i></b><em>{{ agent.tpot.p95 or 'N/A' }}</em></div>
+        </div>
+        <div class="agent-chart-section wide">
+          <h4>{{ pick(request, 'Token Usage', 'Token 使用量', 'Token usage') }}</h4>
+          <div class="agent-bar-row input"><span>{{ pick(request, 'Input', '输入', 'Input') }}</span><b><i style="width: {{ '%.2f'|format(input_pct_agent) }}%"></i></b><em>{{ agent.input_tokens.sum }}</em></div>
+          <div class="agent-bar-row output"><span>{{ pick(request, 'Output', '输出', 'Output') }}</span><b><i style="width: {{ '%.2f'|format(output_pct_agent) }}%"></i></b><em>{{ agent.output_tokens.sum }}</em></div>
+          <div class="agent-bar-row total"><span>{{ pick(request, 'Total', '总计', 'Total') }}</span><b><i style="width: {{ '%.2f'|format(total_pct_agent) }}%"></i></b><em>{{ agent.total_tokens.sum }}</em></div>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  <details class="metrics-detail">
+    <summary>{{ pick(request, 'Detailed agent table', '详细 Agent 表', 'ตาราง Agent แบบละเอียด') }}</summary>
+    <table>
+      <thead><tr><th>Agent</th><th>Calls</th><th>Completed</th><th>Errors</th><th>Latency P50/P95</th><th>TTFT P50/P95</th><th>TPOT P50/P95</th><th>Input tokens sum / p50 / p95</th><th>Output tokens sum / p50 / p95</th><th>Total tokens sum / p50 / p95</th></tr></thead>
+      <tbody>
+        {% for agent in m.agent_breakdown %}
+        <tr>
+          <td>{{ agent.agent }}</td><td>{{ agent.calls }}</td><td>{{ agent.completed }}</td><td>{{ agent.errors }}</td>
+          <td>{{ '%.2fs'|format((agent.latency.p50 or 0)/1000) }} / {{ '%.2fs'|format((agent.latency.p95 or 0)/1000) }}</td>
+          <td>{{ '%.2fs'|format((agent.ttft.p50 or 0)/1000) }} / {{ '%.2fs'|format((agent.ttft.p95 or 0)/1000) }}</td>
+          <td>{{ agent.tpot.p50 or 'N/A' }} / {{ agent.tpot.p95 or 'N/A' }}</td>
+          <td>{{ agent.input_tokens.sum }} / {{ '%.0f'|format(agent.input_tokens.p50 or 0) }} / {{ '%.0f'|format(agent.input_tokens.p95 or 0) }}</td>
+          <td>{{ agent.output_tokens.sum }} / {{ '%.0f'|format(agent.output_tokens.p50 or 0) }} / {{ '%.0f'|format(agent.output_tokens.p95 or 0) }}</td>
+          <td>{{ agent.total_tokens.sum }} / {{ '%.0f'|format(agent.total_tokens.p50 or 0) }} / {{ '%.0f'|format(agent.total_tokens.p95 or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+</section>
+{% endif %}
+
+<section class="panel">
+  <h2>{{ pick(request, 'Fairness & Disclosure', '公平性与披露', 'ความเป็นธรรมและการเปิดเผย') }}</h2>
+  <table><tbody>
+    <tr><th>{{ pick(request, 'SLA compliance', 'SLA 达成', 'SLA compliance') }}</th><td>{{ m.sla_status }}</td></tr>
+    <tr><th>Network RTT</th><td>{{ m.network_rtt }}</td></tr>
+    <tr><th>{{ pick(request, 'Test window', '测试窗口', 'ช่วงเวลาทดสอบ') }}</th><td>{{ report.started_at or '-' }} - {{ report.finished_at or '-' }}. {{ m.test_window }}</td></tr>
+    <tr><th>{{ pick(request, 'Token source', 'token 来源', 'แหล่ง token') }}</th><td>{{ pick(request, 'Server usage field when available; missing fields are shown as 0/N/A.', '优先使用服务端 usage 字段；缺失时显示 0/N/A。', 'ใช้ usage จาก server ถ้ามี; ถ้าขาดจะแสดง 0/N/A') }}</td></tr>
+  </tbody></table>
+</section>
+
+<section class="panel">
+  <h2>{{ pick(request, 'Request Details', '请求明细', 'รายละเอียดคำขอ') }}</h2>
+  <table><thead><tr><th>ID</th><th>{{ t(request, 'table.status') }}</th><th>Latency</th><th>TTFT</th><th>TPOT</th><th>Input</th><th>Output</th><th>Total</th><th>Cost</th><th>{{ t(request, 'table.details') }}</th></tr></thead><tbody>
+  {% for row in data.rows %}<tr><td>{{ row.question_id or row.transcript_id }}</td><td><span class="badge {{ row.status }}">{{ row.status }}</span></td><td>{{ '%.2fs'|format((row.latency_ms or 0)/1000) }}</td><td>{{ '%.2fs'|format((row.ttft_ms or 0)/1000) if row.ttft_ms is not none else 'N/A' }}</td><td>{{ row.tpot_ms or 'N/A' }}</td><td>{{ row._input_tokens or '' }}</td><td>{{ row._output_tokens or '' }}</td><td>{{ row._total_tokens or '' }}</td><td>{% if row.status == 'ok' %}{{ data.cost.currency }} {{ '%.6f'|format(row._cost or 0) }}{% else %}-{% endif %}</td><td><details><summary>{{ (row.error or row.answer or row.outputs|string)[:80] }}</summary><pre>{{ row.error or row.answer or row.outputs }}</pre></details></td></tr>{% endfor %}
+  </tbody></table>
+</section>
+</div>
+{% endblock %}

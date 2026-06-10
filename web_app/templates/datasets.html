@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ pick(request, 'Datasets', '数据集管理', 'ชุดข้อมูล') }}</h1>
+<section class="panel">
+  <h2>{{ pick(request, 'Upload Dataset ZIP', '上传 ZIP 数据集', 'อัปโหลด ZIP ชุดข้อมูล') }}</h2>
+  <form action="/api/datasets/upload" method="post" enctype="multipart/form-data" class="form-grid">
+    <label><span class="field-title">{{ pick(request, 'Name', '名称', 'ชื่อ') }}</span><input name="name" placeholder="for example aliyun-smoke-dataset"></label>
+    <label><span class="field-title">{{ pick(request, 'ZIP file', 'ZIP 文件', 'ไฟล์ ZIP') }}</span><input type="file" name="file" accept=".zip" required></label>
+    <button type="submit">{{ pick(request, 'Upload and validate', '上传并校验', 'อัปโหลดและตรวจสอบ') }}</button>
+  </form>
+  <p class="hint">{{ pick(request, 'The ZIP must contain JSONL files under benchmark_data/uc1 and benchmark_data/uc2.', 'ZIP 内需包含 benchmark_data/uc1 和 benchmark_data/uc2 下的 JSONL 文件。', 'ZIP ต้องมีไฟล์ JSONL ภายใต้ benchmark_data/uc1 และ benchmark_data/uc2') }}</p>
+</section>
+<section class="panel">
+  <h2>{{ pick(request, 'Registered Datasets', '已登记数据集', 'ชุดข้อมูลที่ลงทะเบียน') }}</h2>
+  {% if datasets %}
+  <form action="/api/datasets/delete" method="post" onsubmit="return confirm('{{ t(request, 'confirm.delete_selected') }}')">
+    <table>
+      <thead><tr><th class="select-col"><input type="checkbox" aria-label="{{ t(request, 'action.delete_selected') }}" onclick="var checked = this.checked; this.closest('table').querySelectorAll('tbody input[type=checkbox]').forEach(function(cb){ cb.checked = checked; })"></th><th>ID</th><th>{{ pick(request, 'Name', '名称', 'ชื่อ') }}</th><th>{{ pick(request, 'Valid', '有效', 'ถูกต้อง') }}</th><th>{{ pick(request, 'Record counts', '文件计数', 'จำนวน records') }}</th><th>{{ pick(request, 'Created', '创建时间', 'สร้างเมื่อ') }}</th><th></th></tr></thead>
+      <tbody>
+      {% for ds in datasets %}
+        <tr>
+          <td><input type="checkbox" name="dataset_ids" value="{{ ds.dataset_id }}" aria-label="{{ ds.dataset_id }}"></td>
+          <td>{{ ds.dataset_id }}</td>
+          <td>{{ ds.name }}</td>
+          <td>{{ pick(request, 'Yes', '是', 'ใช่') if ds.valid else pick(request, 'No', '否', 'ไม่ใช่') }}</td>
+          <td class="counts-cell">
+            <span>KB {{ ds.counts.get('uc1/kb_articles.jsonl', 0) }}</span>
+            <span>FAQ {{ ds.counts.get('uc1/faq_questions.jsonl', 0) }}</span>
+            <span>Calls {{ ds.counts.get('uc2/transcripts.jsonl', 0) }}</span>
+            <span>Accounts {{ ds.counts.get('uc2/account_lookup.jsonl', 0) }}</span>
+          </td>
+          <td>{{ ds.created_at }}</td>
+          <td><a href="/datasets/{{ ds.dataset_id }}">{{ t(request, 'table.details') }}</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="table-actions"><button class="danger" type="submit">{{ t(request, 'action.delete_selected') }}</button></div>
+  </form>
+  {% else %}
+  <p class="muted">{{ pick(request, 'No datasets yet.', '暂无数据集。', 'ยังไม่มีชุดข้อมูล') }}</p>
+  {% endif %}
+</section>
+{% endblock %}

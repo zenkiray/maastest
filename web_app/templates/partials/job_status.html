@@ -1,0 +1,185 @@
+{% macro workflow_step(stage, extra_class='') -%}
+  <div class="workflow-step {{ stage.status }} {{ extra_class }}">
+    <div class="workflow-node" title="{{ t(request, 'type.' ~ stage.type.id, stage.type.label) }}">
+      <span class="stage-type-icon type-{{ stage.type.id }}"></span>
+    </div>
+    <div class="workflow-copy">
+      <strong>{{ t(request, 'stage.' ~ stage.id, stage.label) }}</strong>
+      <em>{{ t(request, 'type.' ~ stage.type.id, stage.type.label) }}</em>
+      <b>{{ stage.duration_text or '-' }}</b>
+    </div>
+  </div>
+{%- endmacro %}
+{% macro flow_message(flow) -%}
+  {% if flow.last_message_stage %}{{ t(request, 'stage.' ~ flow.last_message_stage, flow.last_message) }}{% else %}{{ flow.last_message or '-' }}{% endif %}
+{%- endmacro %}
+
+<section class="panel" data-status="{{ job.status }}" data-selected-channel="{% if flow.selected_channel %}{{ flow.selected_channel.item_id }}{% endif %}" data-selected-slot="{{ flow.selected_slot or '' }}">
+  <div class="job-status-head">
+    <div class="status-line">
+      <span class="badge {{ job.status }}">{{ job.status }}</span>
+      <span>{{ t(request, 'job.benchmark_kind') }}</span>
+      {% if platform_label is defined and platform_label %}<span class="platform-badge"><small>{{ pick(request, 'Platform', '平台', 'แพลตฟอร์ม') }}</small><strong>{{ platform_label|upper }}</strong></span>{% endif %}
+      <span>{{ job.started_at or job.created_at }}</span>
+    </div>
+    <div class="job-head-actions">
+    {% if job.status in ['queued', 'running', 'stopping'] %}
+    <form action="/api/jobs/{{ job.job_id }}/stop" method="post" onsubmit="return confirm('{{ t(request, 'job.stop_confirm') }}')">
+      <button type="submit" class="danger" {% if job.status == 'stopping' %}disabled{% endif %}>{{ t(request, 'job.stop') }}</button>
+    </form>
+    {% endif %}
+    <form action="/api/jobs/{{ job.job_id }}/delete" method="post" onsubmit="return confirm('{{ t(request, 'confirm.delete_job') }}')">
+      <button type="submit" class="danger">{{ t(request, 'action.delete_this') }}</button>
+    </form>
+    </div>
+  </div>
+  <dl class="kv"><dt>{{ t(request, 'job.dataset') }}</dt><dd>{{ job.dataset_id }}</dd><dt>{{ t(request, 'job.progress') }}</dt><dd>{{ flow.completed }}{% if flow.total %}/{{ flow.total }}{% endif %}, {{ t(request, 'job.errors') }} {{ flow.errors }}</dd><dt>{{ t(request, 'job.message') }}</dt><dd>{{ flow_message(flow) }}</dd></dl>
+  {% if job.params %}
+  <details class="selected-params" open>
+    <summary>{{ t(request, 'job.selected_params') }}</summary>
+    <div class="param-grid">
+      <div><span>{{ t(request, 'job.test_size') }}</span><b>{{ job.params.test_size }}</b></div>
+      <div><span>{{ t(request, 'job.load_level') }}</span><b>{{ job.params.load_level }}</b></div>
+      <div><span>{{ t(request, 'job.actual_concurrency') }}</span><b>{{ job.params.concurrency_levels }}</b><small>{{ t(request, 'job.actual_concurrency_help') }}</small></div>
+      <div><span>{{ t(request, 'job.run_rounds') }}</span><b>{{ job.params.runs_per_platform }}</b></div>
+      <div><span>{{ t(request, 'job.case_limit') }}</span><b>{{ job.params.limit }}</b><small>{{ t(request, 'job.case_limit_help') }}</small></div>
+      <div><span>{{ t(request, 'job.timeout') }}</span><b>{{ job.params.timeout_seconds }}s</b></div>
+      <div><span>{{ t(request, 'job.answer_mode') }}</span><b>{% if job.params.no_stream %}no-stream{% else %}streaming{% endif %}</b></div>
+      <div><span>{{ t(request, 'job.dry_run') }}</span><b>{{ job.params.dry_run }}</b></div>
+      {% if job.uc == 'uc1' %}<div><span>{{ t(request, 'job.evidence_ranking') }}</span><b>{% if job.params.no_reranker %}off{% else %}on{% endif %}</b></div>{% endif %}
+    </div>
+    {% if ',' in job.params.concurrency_levels %}
+    <p class="hint">{{ pick(request, 'This is a concurrency sweep. Levels run sequentially; for example, 4,8 runs all cases at 4-way concurrency first, then runs all cases again at 8-way concurrency.', '这是并发扫描，会按顺序执行多个档位；例如 4,8 会先用 4 并发跑完全部案例，再用 8 并发再跑一遍。', 'นี่คือ concurrency sweep โดยจะรันแต่ละระดับตามลำดับ เช่น 4,8 จะรันทุกเคสที่ concurrency 4 ก่อน แล้วจึงรันที่ 8') }}</p>
+    {% endif %}
+  </details>
+  {% endif %}
+  {% if job.stop_message %}<div class="notice warn">{{ job.stop_message }}</div>{% endif %}
+  <h2>{{ t(request, 'job.process_flow') }}</h2>
+  <div class="flow-legend">
+    <span><i class="legend-dot pending"></i>{{ t(request, 'status.pending') }}</span>
+    <span><i class="legend-dot running"></i>{{ t(request, 'status.running') }}</span>
+    <span><i class="legend-dot done"></i>{{ t(request, 'status.done') }}</span>
+    <span><i class="legend-dot error"></i>{{ t(request, 'status.error') }}</span>
+  </div>
+  {% if flow.show_channels and flow.channel_summaries %}
+    <h3>{{ t(request, 'job.execution_channels') }}</h3>
+    {% if flow.channel_summaries|length > 1 %}
+      <p class="hint">{{ pick(request, 'Only the selected channel is expanded. Other channels are shown as status dots to keep refresh fast.', '当前只展开所选通道明细，其余通道以状态圆点展示，以保持刷新流畅。', 'แสดงรายละเอียดเฉพาะ channel ที่เลือก ส่วนอื่นแสดงเป็นจุดสถานะเพื่อให้ refresh เร็ว') }}</p>
+      <div class="channel-dot-list" data-channel-selector>
+        {% for channel in flow.channel_summaries %}
+          <button type="button" class="channel-dot {{ channel.status }} {% if flow.selected_slot and channel.index == flow.selected_slot %}active{% endif %}" data-channel-slot="{{ channel.index }}" data-channel-id="{{ channel.item_id }}" title="Channel {{ channel.index }} · {{ channel.item_id }} · {{ t(request, 'stage.' ~ channel.current_stage, channel.current_stage or '-') }}">
+            <span>{{ channel.index }}</span>
+          </button>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if flow.selected_channel %}
+      {% set channel = flow.selected_channel %}
+      <section class="channel-card selected-channel-card">
+        <div class="channel-title">Channel {{ channel.index }} · {{ channel.item_id }} <span class="badge {{ channel.status }}">{{ channel.status }}</span></div>
+        {% if channel.layout == 'uc2_parallel' and channel.uc2_parallel %}
+        <div class="parallel-workflow channel-workflow">
+          {% if channel.uc2_parallel.entry %}
+          <div class="parallel-edge parallel-entry">{{ workflow_step(channel.uc2_parallel.entry, 'compact') }}</div>
+          {% endif %}
+          <div class="parallel-arrow" aria-hidden="true"></div>
+          <div class="parallel-zone">
+            <div class="parallel-zone-head">
+                <strong>{{ t(request, 'flow.parallel_specialist') }}</strong>
+            </div>
+            <div class="parallel-specialists">
+              {% for stage in channel.uc2_parallel.specialists %}
+                {{ workflow_step(stage, 'compact') }}
+              {% endfor %}
+            </div>
+            <div class="account-branch">
+              <div class="account-branch-title">
+                <strong>{{ t(request, 'flow.account_branch') }}</strong>
+                <span>{{ t(request, 'flow.account_branch_help') }}</span>
+              </div>
+              <div class="account-branch-steps">
+                {% for stage in channel.uc2_parallel.account_branch %}
+                  {{ workflow_step(stage, 'compact branch-step') }}
+                  {% if not loop.last %}<div class="account-branch-arrow" aria-hidden="true"></div>{% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <div class="parallel-arrow" aria-hidden="true"></div>
+          {% if channel.uc2_parallel.final %}
+          <div class="parallel-edge parallel-final">{{ workflow_step(channel.uc2_parallel.final, 'compact') }}</div>
+          {% endif %}
+          {% if channel.uc2_parallel.post %}
+            {% for stage in channel.uc2_parallel.post %}
+              <div class="parallel-arrow" aria-hidden="true"></div>
+              <div class="parallel-edge parallel-post">{{ workflow_step(stage, 'compact') }}</div>
+            {% endfor %}
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="workflow channel-workflow">
+          {% for stage in channel.stages %}
+            {{ workflow_step(stage) }}
+            {% if not loop.last %}<div class="parallel-arrow {{ stage.status }}" aria-hidden="true"></div>{% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% if channel.llm_outputs %}
+        <div class="model-output-panel">
+          <h4>{{ t(request, 'job.model_output') }}</h4>
+          <div class="model-output-tabs" data-tabs="model-output-channel-{{ channel.index }}-{{ channel.item_id }}">
+            <div class="tab-list model-output-tab-list" role="tablist">
+              {% for output in channel.llm_outputs %}
+              <button type="button" class="tab-button {% if loop.last %}active{% endif %}" data-tab-target="model-output-{{ channel.index }}-{{ channel.item_id }}-{{ output.id }}" role="tab">
+                {{ t(request, 'stage.' ~ output.id, output.label) }}
+                <span class="badge {{ output.status }}">{{ output.status }}</span>
+                <em class="tab-duration">{{ output.duration_text or '-' }}</em>
+              </button>
+              {% endfor %}
+            </div>
+          {% for output in channel.llm_outputs %}
+            <section class="model-output-item tab-panel {% if loop.last %}active{% endif %}" data-tab-panel="model-output-{{ channel.index }}-{{ channel.item_id }}-{{ output.id }}">
+            {% if output.output_preview %}
+              <pre class="{% if output.status == 'running' %}streaming-output{% endif %}">{{ output.output_preview }}</pre>
+            {% else %}
+              <p class="hint model-output-empty">{{ t(request, 'job.waiting_model') }}</p>
+            {% endif %}
+            </section>
+          {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </section>
+    {% endif %}
+  {% endif %}
+  <h3>{{ t(request, 'job.stage_summary') }}</h3>
+  <p class="hint">{{ t(request, 'job.stage_summary_help') }}</p>
+  <div class="stage-summary-text">
+    {% for stage in flow.stages %}
+      <div class="stage-summary-line {{ stage.status }}">
+        <span class="stage-summary-name">
+          <i></i>
+          <strong>{{ t(request, 'stage.' ~ stage.id, stage.label) }}</strong>
+        </span>
+        {% if stage.id in ['load_question', 'report', 'complete', 'validate_dataset', 'chunk_knowledge', 'prepare_collection'] %}
+        <span class="stage-summary-metrics">
+          <span>{{ t(request, 'metric.status') }} <b>{{ stage.status }}</b></span>
+        </span>
+        {% else %}
+        <span class="stage-summary-metrics">
+          <span>{{ t(request, 'metric.active') }} <b>{{ stage.active }}</b></span>
+          <span>{{ t(request, 'metric.done') }} <b>{{ stage.completed_cases }}</b></span>
+          <span>{{ t(request, 'metric.error') }} <b>{{ stage.error_cases }}</b></span>
+          <span>{{ t(request, 'metric.avg') }} <b>{{ stage.avg_duration_text or '-' }}</b></span>
+        </span>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+  <details class="technical">
+    <summary>{{ t(request, 'job.technical_details') }}</summary>
+    <dl class="kv"><dt>{{ pick(request, 'Config', '配置', 'การตั้งค่า') }}</dt><dd>{{ job.config }}</dd><dt>Raw log</dt><dd>{{ job.raw_log_path or '-' }}</dd><dt>Summary</dt><dd>{{ job.summary_path or '-' }}</dd></dl>
+    <h2>{{ t(request, 'job.log_tail') }}</h2><pre class="log">{{ log or 'Waiting for output...' }}</pre>
+  </details>
+  {% if job.raw_log_path %}<div class="job-actions"><a class="button" href="/reports/{{ job.job_id }}">{{ t(request, 'job.view_report') }}</a></div>{% endif %}
+</section>

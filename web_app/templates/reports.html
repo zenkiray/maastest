@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ t(request, 'nav.reports') }}</h1>
+<section class="panel">
+  <form method="get" class="form-row">
+    <label><span class="field-title">{{ pick(request, 'Use case', '测试用例', 'กรณีทดสอบ') }}</span><select name="uc"><option value="">{{ pick(request, 'All', '全部', 'ทั้งหมด') }}</option><option value="uc1" {% if filters.uc == 'uc1' %}selected{% endif %}>UC1</option><option value="uc2" {% if filters.uc == 'uc2' %}selected{% endif %}>UC2</option></select></label>
+    <label><span class="field-title">{{ t(request, 'table.status') }}</span><select name="status"><option value="">{{ pick(request, 'All', '全部', 'ทั้งหมด') }}</option><option value="completed" {% if filters.status == 'completed' %}selected{% endif %}>{{ pick(request, 'completed', '已完成', 'เสร็จแล้ว') }}</option><option value="failed" {% if filters.status == 'failed' %}selected{% endif %}>{{ pick(request, 'failed', '失败', 'ล้มเหลว') }}</option></select></label>
+    <button>{{ pick(request, 'Filter', '筛选', 'กรอง') }}</button>
+  </form>
+</section>
+<section class="panel">
+  {% if reports %}
+  <form action="/api/reports/delete" method="post" onsubmit="return confirm('{{ t(request, 'confirm.delete_selected') }}')">
+    <table>
+      <thead><tr><th class="select-col"><input type="checkbox" aria-label="{{ t(request, 'action.delete_selected') }}" onclick="var checked = this.checked; this.closest('table').querySelectorAll('tbody input[type=checkbox]').forEach(function(cb){ cb.checked = checked; })"></th><th>{{ t(request, 'table.job') }}</th><th>UC</th><th>{{ t(request, 'table.status') }}</th><th>{{ t(request, 'table.dataset') }}</th><th>{{ t(request, 'table.started') }}</th><th>{{ t(request, 'table.finished') }}</th><th></th></tr></thead>
+      <tbody>
+      {% for r in reports %}
+      <tr><td><input type="checkbox" name="job_ids" value="{{ r.job_id }}" aria-label="{{ r.job_id }}"></td><td>{{ r.job_id }}</td><td>{{ r.uc }}</td><td><span class="badge {{ r.status }}">{{ r.status }}</span></td><td>{{ r.dataset_id }}</td><td>{{ r.started_at }}</td><td>{{ r.finished_at }}</td><td><a href="/reports/{{ r.job_id }}">{{ t(request, 'table.details') }}</a></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="table-actions"><button class="danger" type="submit">{{ t(request, 'action.delete_selected') }}</button></div>
+  </form>
+  {% else %}
+  <p class="muted">{{ t(request, 'home.no_reports') }}</p>
+  {% endif %}
+</section>
+{% endblock %}

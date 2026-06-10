@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ t(request, 'job.import_title') }} {{ job.job_id }}</h1>
+<div id="job-status" hx-get="/api/jobs/{{ job.job_id }}/status" hx-trigger="load, every 1200ms" hx-swap="innerHTML">
+  {% include 'partials/job_status_import.html' %}
+</div>
+{% endblock %}

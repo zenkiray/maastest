@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ pick(request, 'Token Pricing', 'Token 计价设置', 'ราคา Token') }}</h1>
+<section class="panel">
+  <form action="/api/pricing" method="post" class="form-grid">
+    <label><span class="field-title">{{ pick(request, 'Currency', '币种', 'สกุลเงิน') }}</span><input name="currency" value="{{ pricing.currency }}"><span>{{ pick(request, 'For example USD, THB, or CNY.', '例如 USD、THB、CNY。', 'เช่น USD, THB หรือ CNY') }}</span></label>
+    <label><span class="field-title">{{ pick(request, 'Input token price per 1M tokens', '输入 token 单价（每 100 万 tokens）', 'ราคาต่อ 1M input tokens') }}</span><input type="number" step="0.000001" name="input_per_1m" value="{{ pricing.input_per_1m }}"><span>{{ pick(request, 'Unit: currency amount per 1,000,000 input tokens.', '单位：每 1,000,000 输入 tokens 的金额。', 'หน่วย: ราคาต่อ 1,000,000 input tokens') }}</span></label>
+    <label><span class="field-title">{{ pick(request, 'Output token price per 1M tokens', '输出 token 单价（每 100 万 tokens）', 'ราคาต่อ 1M output tokens') }}</span><input type="number" step="0.000001" name="output_per_1m" value="{{ pricing.output_per_1m }}"><span>{{ pick(request, 'Unit: currency amount per 1,000,000 output tokens.', '单位：每 1,000,000 输出 tokens 的金额。', 'หน่วย: ราคาต่อ 1,000,000 output tokens') }}</span></label>
+    <button>{{ pick(request, 'Save', '保存', 'บันทึก') }}</button>
+  </form>
+</section>
+{% endblock %}

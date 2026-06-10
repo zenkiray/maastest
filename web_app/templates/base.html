@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="{{ current_lang(request) }}" data-lang="{{ current_lang(request) }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or t(request, 'brand') }}</title>
+  <link rel="stylesheet" href="/static/style.css?v=20260611-uc2-account-center-1">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img class="brand-logo" src="/static/assets/client-logo.jpg" alt="Client logo"><span>{{ t(request, 'brand') }}</span></div>
+    <nav>
+      <a href="/">{{ t(request, 'nav.home') }}</a>
+      <a href="/datasets">{{ t(request, 'nav.datasets') }}</a>
+      <a href="/qdrant">{{ t(request, 'nav.qdrant') }}</a>
+      <a href="/uc1">{{ t(request, 'nav.uc1') }}</a>
+      <a href="/uc2">{{ t(request, 'nav.uc2') }}</a>
+      <a href="/jobs">{{ t(request, 'nav.jobs') }}</a>
+      <a href="/reports">{{ t(request, 'nav.reports') }}</a>
+      <a href="/settings/config">{{ t(request, 'nav.settings') }}</a>
+    </nav>
+    <form class="language-switch" method="get" action="{{ request.url.path }}">
+      <label>
+        <span>{{ t(request, 'language') }}</span>
+        <select name="lang" onchange="this.form.submit()">
+          {% for lang in language_options(request) %}
+          <option value="{{ lang.code }}" {% if lang.selected %}selected{% endif %}>{{ lang.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </form>
+    <form class="logout" action="/logout" method="post"><button type="submit">{{ t(request, 'nav.sign_out') }}</button></form>
+  </header>
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+  <script src="/static/htmx-lite.js?v=20260610-4"></script>
+</body>
+</html>

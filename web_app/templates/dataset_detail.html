@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ pick(request, 'Dataset Details', '数据集详情', 'รายละเอียดชุดข้อมูล') }}</h1>
+<section class="panel">
+  <dl class="kv">
+    <dt>ID</dt><dd>{{ dataset.dataset_id }}</dd>
+    <dt>{{ pick(request, 'Name', '名称', 'ชื่อ') }}</dt><dd>{{ dataset.name }}</dd>
+    <dt>{{ pick(request, 'Path', '路径', 'พาธ') }}</dt><dd><code>{{ dataset.data_dir }}</code></dd>
+    <dt>{{ pick(request, 'Valid', '有效', 'ถูกต้อง') }}</dt><dd>{{ pick(request, 'Yes', '是', 'ใช่') if dataset.valid else pick(request, 'No', '否', 'ไม่ใช่') }}</dd>
+    <dt>{{ pick(request, 'Missing files', '缺失文件', 'ไฟล์ที่ขาด') }}</dt><dd>{{ dataset.missing or pick(request, 'None', '无', 'ไม่มี') }}</dd>
+  </dl>
+  <h3>{{ pick(request, 'Record Counts', '文件计数', 'จำนวน records') }}</h3><pre>{{ dataset.counts }}</pre>
+  <div class="detail-actions">
+    <form action="/api/datasets/{{ dataset.dataset_id }}/delete" method="post" onsubmit="return confirm('{{ t(request, 'confirm.delete_dataset') }}')">
+      <button class="danger" type="submit">{{ t(request, 'action.delete_this') }}</button>
+    </form>
+  </div>
+</section>
+<section class="panel">
+  <h2>{{ pick(request, 'Initialize Knowledge Index', '初始化知识库索引', 'เริ่มต้นดัชนีความรู้') }}</h2>
+  {% if not config_ready %}
+    <div class="alert">{{ t(request, 'uc.settings_not_ready') }}</div>
+    <a class="button" href="/settings/config">{{ t(request, 'uc.open_settings') }}</a>
+  {% endif %}
+  <form action="/api/datasets/{{ dataset.dataset_id }}/init-qdrant" method="post" class="form-grid">
+    <label><span class="field-title">{{ pick(request, 'Import mode', '导入模式', 'โหมดนำเข้า') }}</span><select name="mode"><option value="incremental">{{ pick(request, 'Incremental import', '增量导入', 'นำเข้าแบบเพิ่ม') }}</option><option value="overwrite">{{ pick(request, 'Overwrite index', '覆盖导入', 'เขียนทับดัชนี') }}</option></select><span>{{ pick(request, 'Overwrite deletes and recreates the collection.', '覆盖导入会删除并重建集合，请谨慎。', 'โหมดเขียนทับจะลบและสร้าง collection ใหม่') }}</span></label>
+    <label><span class="field-title">{{ pick(request, 'Batch size', '批量大小', 'ขนาด batch') }}</span><input type="number" name="batch_size" value="10" min="1"><span>{{ pick(request, 'Number of texts per embedding batch.', '每批 embedding 的文本数量。', 'จำนวนข้อความต่อ embedding batch') }}</span></label>
+    <button type="submit" {% if not config_ready %}disabled{% endif %}>{{ pick(request, 'Start initialization', '开始初始化', 'เริ่มต้น') }}</button>
+  </form>
+</section>
+{% endblock %}
