@@ -53,7 +53,7 @@ The interactive runner lists YAML files under `config/`, then asks for the test 
 ./start_web.sh
 ```
 
-The script creates `.venv_web` when needed, installs dependencies, stops any existing web runner, and starts it again in the background. Use `PORT=8001 ./start_web.sh` to run on another port. Open `http://localhost:8000` or the cloud-host address. The web runner supports login, English/Chinese/Thai UI switching, ZIP dataset upload, Qdrant initialization, Qdrant point browsing, UC1/UC2 execution, live job progress, historical reports, PDF export, and token-cost calculation. The default login is `admin/admin`; change it in Settings before sharing the service.
+The script creates `.venv_web` when needed, installs dependencies, stops any existing web runner, and starts it again in the background. Use `PORT=8001 ./start_web.sh` to run on another port. Open `http://localhost:8000` or the cloud-host address. To stop the web runner without restarting it, run `./stop_web.sh`. The web runner supports login, English/Chinese/Thai UI switching, ZIP dataset upload, Qdrant initialization, Qdrant point browsing, UC1/UC2 execution, live job progress, historical reports, PDF export, and token-cost calculation. The default login is `admin/admin`; change it in Settings before sharing the service.
 
 ## Live Run Order
 ```bash
