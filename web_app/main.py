@@ -174,6 +174,18 @@ templates.env.globals["current_lang"] = request_lang
 templates.env.globals["language_options"] = language_options
 
 
+def static_version(path: str) -> str:
+    safe_path = path.lstrip("/")
+    target = ROOT / "web_app" / "static" / safe_path
+    try:
+        return str(target.stat().st_mtime_ns)
+    except OSError:
+        return "1"
+
+
+templates.env.globals["static_version"] = static_version
+
+
 def session_secret() -> str:
     if SESSION_SECRET_FILE.exists():
         return SESSION_SECRET_FILE.read_text(encoding="utf-8").strip()

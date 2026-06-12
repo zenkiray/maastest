@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ title or t(request, 'brand') }}</title>
-  <link rel="stylesheet" href="/static/style.css?v=20260611-uc2-account-center-1">
+  <link rel="stylesheet" href="/static/style.css?v={{ static_version('style.css') }}">
 </head>
 <body>
   <header class="topbar">
@@ -34,6 +34,6 @@
   <main class="page">
     {% block content %}{% endblock %}
   </main>
-  <script src="/static/htmx-lite.js?v=20260612-timezone-1"></script>
+  <script src="/static/htmx-lite.js?v={{ static_version('htmx-lite.js') }}"></script>
 </body>
 </html>
