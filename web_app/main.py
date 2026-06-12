@@ -1796,7 +1796,7 @@ def delete_dataset(dataset_id: str) -> RedirectResponse:
 
 
 @app.post("/api/datasets/{dataset_id}/init-qdrant")
-def init_qdrant(dataset_id: str, mode: str = Form("incremental"), batch_size: int = Form(10)) -> RedirectResponse:
+def init_qdrant(dataset_id: str, mode: str = Form("overwrite"), batch_size: int = Form(10)) -> RedirectResponse:
     meta = read_json(dataset_meta_path(dataset_id), None)
     if not meta:
         raise HTTPException(status_code=404, detail="dataset not found")
@@ -1807,7 +1807,7 @@ def init_qdrant(dataset_id: str, mode: str = Form("incremental"), batch_size: in
     job_id = new_job_id("qdrant")
     event_log = JOBS_DIR / f"{job_id}_events.jsonl"
     cmd = [sys.executable, str(SCRIPTS_DIR / "build_qdrant_index.py"), "--config", str(config_path.relative_to(ROOT)), "--data-dir", str(Path(meta["data_dir"]).resolve()), "--batch-size", str(batch_size), "--event-log", str(event_log)]
-    if mode == "overwrite":
+    if mode in {"overwrite", "full_rebuild"}:
         cmd.append("--recreate-collection")
     job = {"job_id": job_id, "kind": "qdrant_init", "dataset_id": dataset_id, "config": CONFIG_LOCAL.name, "mode": mode, "status": "queued", "created_at": now_iso(), "event_log_path": str(event_log)}
     save_job(job)

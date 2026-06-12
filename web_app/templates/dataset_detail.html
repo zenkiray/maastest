@@ -23,7 +23,7 @@
     <a class="button" href="/settings/config">{{ t(request, 'uc.open_settings') }}</a>
   {% endif %}
   <form action="/api/datasets/{{ dataset.dataset_id }}/init-qdrant" method="post" class="form-grid">
-    <label><span class="field-title">{{ pick(request, 'Import mode', '导入模式', 'โหมดนำเข้า') }}</span><select name="mode"><option value="incremental">{{ pick(request, 'Incremental import', '增量导入', 'นำเข้าแบบเพิ่ม') }}</option><option value="overwrite">{{ pick(request, 'Overwrite index', '覆盖导入', 'เขียนทับดัชนี') }}</option></select><span>{{ pick(request, 'Overwrite deletes and recreates the collection.', '覆盖导入会删除并重建集合，请谨慎。', 'โหมดเขียนทับจะลบและสร้าง collection ใหม่') }}</span></label>
+    <label><span class="field-title">{{ pick(request, 'Import mode', '导入模式', 'โหมดนำเข้า') }}</span><select name="mode"><option value="overwrite">{{ pick(request, 'Full rebuild', '全量重建', 'สร้างใหม่ทั้งหมด') }}</option><option value="incremental">{{ pick(request, 'Incremental upsert', '增量追加', 'นำเข้าแบบเพิ่ม') }}</option></select><span>{{ pick(request, 'Full rebuild deletes and recreates the collection first, so vector dimension changes are handled safely.', '全量重建会先删除并重建集合，因此可以安全处理向量维度变化。', 'โหมดสร้างใหม่ทั้งหมดจะลบและสร้าง collection ใหม่ก่อน จึงรองรับการเปลี่ยน dimension ของ vector ได้อย่างปลอดภัย') }}</span></label>
     <label><span class="field-title">{{ pick(request, 'Batch size', '批量大小', 'ขนาด batch') }}</span><input type="number" name="batch_size" value="10" min="1"><span>{{ pick(request, 'Number of texts per embedding batch.', '每批 embedding 的文本数量。', 'จำนวนข้อความต่อ embedding batch') }}</span></label>
     <button type="submit" {% if not config_ready %}disabled{% endif %}>{{ pick(request, 'Start initialization', '开始初始化', 'เริ่มต้น') }}</button>
   </form>

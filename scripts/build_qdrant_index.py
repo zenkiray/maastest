@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -81,15 +82,34 @@ def collection_vector_size(info: dict[str, Any]) -> int | None:
     return None
 
 
+def wait_for_collection_deleted(qdrant_url: str, collection: str, headers: dict[str, str], timeout_seconds: float = 30.0) -> None:
+    collection_url = f"{qdrant_url}/collections/{collection}"
+    deadline = time.time() + timeout_seconds
+    while time.time() < deadline:
+        try:
+            http_json("GET", collection_url, None, headers)
+        except RuntimeError as exc:
+            if "HTTP 404" in str(exc):
+                return
+            raise
+        time.sleep(0.5)
+    raise RuntimeError(f"Timed out waiting for Qdrant collection '{collection}' to be deleted")
+
+
 def ensure_collection(qdrant_url: str, collection: str, headers: dict[str, str], vector_size: int, recreate: bool) -> None:
     collection_url = f"{qdrant_url}/collections/{collection}"
     if recreate:
+        deleted = False
         try:
             http_json("DELETE", collection_url, None, headers)
             print(f"deleted existing collection: {collection}")
+            deleted = True
         except RuntimeError as exc:
             if "HTTP 404" not in str(exc):
                 raise
+            print(f"collection did not exist before rebuild: {collection}")
+        if deleted:
+            wait_for_collection_deleted(qdrant_url, collection, headers)
     try:
         http_json("PUT", collection_url, {"vectors": {"size": vector_size, "distance": "Cosine"}}, headers)
         print(f"created collection: {collection} ({vector_size} dims)")
