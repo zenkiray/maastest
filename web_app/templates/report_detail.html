@@ -11,7 +11,12 @@
 {% set cost_total = (data.cost.total or 0) %}
 {% set input_cost_pct = (((data.cost.input or 0) / cost_total * 100) if cost_total else 0) %}
 {% set output_cost_pct = (((data.cost.output or 0) / cost_total * 100) if cost_total else 0) %}
+{% set report_date = report.finished_at or report.started_at or report.created_at %}
 <h1>{{ pick(request, 'Report', '报告', 'รายงาน') }} {{ report.job_id }}</h1>
+<div class="report-meta-line">
+  <span>{{ pick(request, 'Report Date', '报告日期', 'วันที่รายงาน') }}</span>
+  <strong>{% if report_date %}<time data-datetime="{{ report_date }}">{{ report_date }}</time>{% else %}-{% endif %}</strong>
+</div>
 <div class="platform-banner" data-platform="{{ platform_label }}">
   <span>{{ pick(request, 'Testing Platform', '测试平台', 'แพลตฟอร์มทดสอบ') }}</span>
   <strong>{{ platform_label|upper }}</strong>

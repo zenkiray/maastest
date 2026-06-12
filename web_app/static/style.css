@@ -261,6 +261,9 @@ button.tab-button .zh-sub{color:#64748b;font-size:14px}
 .report-actions form,
 .detail-actions form,
 .table-actions form{margin:0}
+.report-meta-line{display:flex;align-items:center;gap:10px;margin:-8px 0 14px;color:var(--muted)}
+.report-meta-line span{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.report-meta-line strong{color:var(--text);font-size:16px}
 .platform-banner{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;overflow:hidden;border:1px solid #bfdbfe;border-radius:8px;background:linear-gradient(135deg,#eff6ff,#ecfeff);padding:14px 16px;margin:-4px 0 14px;box-shadow:0 12px 26px rgba(37,99,235,.10)}
 .platform-banner::after{content:attr(data-platform);position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:46px;line-height:1;font-weight:900;letter-spacing:.08em;color:#2563eb;opacity:.08;pointer-events:none}
 .platform-banner span{position:relative;z-index:1;color:#475569;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}

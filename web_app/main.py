@@ -1547,6 +1547,7 @@ def generate_report_pdf(job_id: str, report: dict[str, Any], data: dict[str, Any
     m = data["required_metrics"]
     currency = data["cost"]["currency"]
     platform_label = pdf_watermark_label(report)
+    report_date_label_text = format_report_datetime(report.get("finished_at") or report.get("started_at") or report.get("created_at"), tz_name)
     started_label = format_report_datetime(report.get("started_at"), tz_name)
     finished_label = format_report_datetime(report.get("finished_at"), tz_name)
     logo_path = ROOT / "web_app" / "static" / "assets" / "client-logo.jpg"
@@ -1567,6 +1568,7 @@ def generate_report_pdf(job_id: str, report: dict[str, Any], data: dict[str, Any
         story.append(p("MaaS Benchmark Report", title_style))
     story += [
         p(f"Platform: {platform_label}", h2_style),
+        p(f"Report Date: {report_date_label_text}"),
         p(f"Job: {job_id}"),
         p(f"UC: {m.get('uc') or report.get('uc') or '-'} | Dataset: {report.get('dataset_id', '-')} | Status: {report.get('status', '-')}"),
         p(f"Started: {started_label} | Finished: {finished_label}"),
