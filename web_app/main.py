@@ -530,6 +530,18 @@ def build_flow_state(job: dict[str, Any], selected_channel_id: str = "", selecte
             channel_summaries.append(summary)
             if selected_state and state["item_id"] == selected_state["item_id"]:
                 selected_channel = build_channel_detail(state, slot)
+    progress_total = max(int(total or 0), 0)
+    progress_completed = max(int(completed or 0), 0)
+    progress_errors = max(int(errors or 0), 0)
+    bar_total = progress_total if progress_total > 0 else max(progress_completed, progress_errors, 1)
+    bar_errors = min(progress_errors, bar_total)
+    bar_completed = min(progress_completed, bar_total)
+    bar_success = max(bar_completed - bar_errors, 0)
+    bar_pending = max(bar_total - bar_success - bar_errors, 0)
+
+    def progress_percent(value: int) -> float:
+        return round(value / bar_total * 100, 2) if bar_total > 0 else 0.0
+
     return {
         "kind": kind,
         "stages": stages,
@@ -543,6 +555,16 @@ def build_flow_state(job: dict[str, Any], selected_channel_id: str = "", selecte
         "completed": completed,
         "total": total,
         "errors": errors,
+        "progress": {
+            "completed": progress_completed,
+            "total": progress_total,
+            "success": bar_success,
+            "pending": bar_pending,
+            "errors": progress_errors,
+            "success_percent": progress_percent(bar_success),
+            "pending_percent": progress_percent(bar_pending),
+            "error_percent": progress_percent(bar_errors),
+        },
         "last_message": last_message,
         "last_message_stage": last_message_stage,
         "import": import_info,

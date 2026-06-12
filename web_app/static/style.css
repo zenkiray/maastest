@@ -1286,3 +1286,56 @@ th{
     justify-content:flex-start;
   }
 }
+.job-progress{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width:min(720px,100%);
+}
+.job-progress-bar{
+  display:flex;
+  flex:1 1 280px;
+  height:14px;
+  overflow:hidden;
+  border:1px solid #d6dee9;
+  border-radius:999px;
+  background:#d9e2ee;
+}
+.job-progress-segment{
+  display:block;
+  height:100%;
+  min-width:0;
+  transition:width .2s ease;
+}
+.job-progress-segment.success{
+  background:#16a34a;
+}
+.job-progress-segment.error{
+  background:#ef4444;
+}
+.job-progress-segment.pending{
+  background:#d9e2ee;
+}
+.job-progress-numbers{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.job-progress-numbers b{
+  color:var(--text);
+}
+@media(max-width:700px){
+  .job-progress{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .job-progress-bar{
+    width:100%;
+    flex:auto;
+  }
+  .job-progress-numbers{
+    white-space:normal;
+  }
+}

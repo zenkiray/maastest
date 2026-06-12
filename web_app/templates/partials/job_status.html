@@ -34,7 +34,26 @@
     </form>
     </div>
   </div>
-  <dl class="kv"><dt>{{ t(request, 'job.dataset') }}</dt><dd>{{ job.dataset_id }}</dd><dt>{{ t(request, 'job.progress') }}</dt><dd>{{ flow.completed }}{% if flow.total %}/{{ flow.total }}{% endif %}, {{ t(request, 'job.errors') }} {{ flow.errors }}</dd><dt>{{ t(request, 'job.message') }}</dt><dd>{{ flow_message(flow) }}</dd></dl>
+  <dl class="kv">
+    <dt>{{ t(request, 'job.dataset') }}</dt>
+    <dd>{{ job.dataset_id }}</dd>
+    <dt>{{ t(request, 'job.progress') }}</dt>
+    <dd>
+      <div class="job-progress">
+        <div class="job-progress-bar" role="img" aria-label="{{ t(request, 'job.progress') }} {{ flow.progress.completed }}{% if flow.progress.total %}/{{ flow.progress.total }}{% endif %}, {{ t(request, 'job.errors') }} {{ flow.progress.errors }}">
+          <span class="job-progress-segment success" style="width: {{ flow.progress.success_percent }}%"></span>
+          <span class="job-progress-segment error" style="width: {{ flow.progress.error_percent }}%"></span>
+          <span class="job-progress-segment pending" style="width: {{ flow.progress.pending_percent }}%"></span>
+        </div>
+        <span class="job-progress-numbers">
+          <b>{{ flow.progress.completed }}{% if flow.progress.total %}/{{ flow.progress.total }}{% endif %}</b>
+          <span>{{ t(request, 'job.errors') }} {{ flow.progress.errors }}</span>
+        </span>
+      </div>
+    </dd>
+    <dt>{{ t(request, 'job.message') }}</dt>
+    <dd>{{ flow_message(flow) }}</dd>
+  </dl>
   {% if job.params %}
   <details class="selected-params" open>
     <summary>{{ t(request, 'job.selected_params') }}</summary>
