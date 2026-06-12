@@ -17,7 +17,7 @@
   <strong>{{ platform_label|upper }}</strong>
 </div>
 <div class="report-actions">
-  <a class="button" href="/reports/{{ report.job_id }}/pdf">{{ pick(request, 'Export PDF', '导出 PDF', 'ส่งออก PDF') }}</a>
+  <a class="button" href="/reports/{{ report.job_id }}/pdf" data-pdf-download>{{ pick(request, 'Export PDF', '导出 PDF', 'ส่งออก PDF') }}</a>
   <form action="/api/reports/{{ report.job_id }}/delete" method="post" onsubmit="return confirm('{{ t(request, 'confirm.delete_report') }}')">
     <button class="danger" type="submit">{{ t(request, 'action.delete_this') }}</button>
   </form>
@@ -309,7 +309,7 @@
   <table><tbody>
     <tr><th>{{ pick(request, 'SLA compliance', 'SLA 达成', 'SLA compliance') }}</th><td>{{ m.sla_status }}</td></tr>
     <tr><th>Network RTT</th><td>{{ m.network_rtt }}</td></tr>
-    <tr><th>{{ pick(request, 'Test window', '测试窗口', 'ช่วงเวลาทดสอบ') }}</th><td>{{ report.started_at or '-' }} - {{ report.finished_at or '-' }}. {{ m.test_window }}</td></tr>
+    <tr><th>{{ pick(request, 'Test window', '测试窗口', 'ช่วงเวลาทดสอบ') }}</th><td>{% if report.started_at %}<time data-datetime="{{ report.started_at }}">{{ report.started_at }}</time>{% else %}-{% endif %} - {% if report.finished_at %}<time data-datetime="{{ report.finished_at }}">{{ report.finished_at }}</time>{% else %}-{% endif %}. {{ m.test_window }}</td></tr>
     <tr><th>{{ pick(request, 'Token source', 'token 来源', 'แหล่ง token') }}</th><td>{{ pick(request, 'Server usage field when available; missing fields are shown as 0/N/A.', '优先使用服务端 usage 字段；缺失时显示 0/N/A。', 'ใช้ usage จาก server ถ้ามี; ถ้าขาดจะแสดง 0/N/A') }}</td></tr>
   </tbody></table>
 </section>

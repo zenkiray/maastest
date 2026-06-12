@@ -14,7 +14,7 @@
   <h2>{{ t(request, 'home.recent_jobs') }}</h2>
   {% if jobs %}
   <table><thead><tr><th>{{ t(request, 'table.job') }}</th><th>{{ t(request, 'table.type') }}</th><th>UC</th><th>{{ t(request, 'table.status') }}</th><th>{{ t(request, 'table.dataset') }}</th><th>{{ t(request, 'table.started') }}</th><th></th></tr></thead><tbody>
-  {% for job in jobs %}<tr><td>{{ job.job_id }}</td><td>{{ t(request, 'job.import_kind') if job.kind == 'qdrant_init' else t(request, 'job.benchmark_kind') }}</td><td>{{ job.uc or '-' }}</td><td><span class="badge {{ job.status }}">{{ job.status }}</span></td><td>{{ job.dataset_id }}</td><td>{{ job.started_at or job.created_at }}</td><td><a href="/jobs/{{ job.job_id }}">{{ t(request, 'table.details') }}</a></td></tr>{% endfor %}
+  {% for job in jobs %}<tr><td>{{ job.job_id }}</td><td>{{ t(request, 'job.import_kind') if job.kind == 'qdrant_init' else t(request, 'job.benchmark_kind') }}</td><td>{{ job.uc or '-' }}</td><td><span class="badge {{ job.status }}">{{ job.status }}</span></td><td>{{ job.dataset_id }}</td><td>{% set started = job.started_at or job.created_at %}<time data-datetime="{{ started }}">{{ started }}</time></td><td><a href="/jobs/{{ job.job_id }}">{{ t(request, 'table.details') }}</a></td></tr>{% endfor %}
   </tbody></table>
   {% else %}<p class="muted">{{ t(request, 'home.no_jobs') }}</p>{% endif %}
 </section>
@@ -22,7 +22,7 @@
   <h2>{{ t(request, 'home.recent_reports') }}</h2>
   {% if reports %}
   <table><thead><tr><th>{{ t(request, 'table.job') }}</th><th>UC</th><th>{{ t(request, 'table.status') }}</th><th>{{ t(request, 'table.dataset') }}</th><th>{{ t(request, 'table.started') }}</th><th></th></tr></thead><tbody>
-  {% for r in reports %}<tr><td>{{ r.job_id }}</td><td>{{ r.uc }}</td><td><span class="badge {{ r.status }}">{{ r.status }}</span></td><td>{{ r.dataset_id }}</td><td>{{ r.started_at }}</td><td><a href="/reports/{{ r.job_id }}">{{ t(request, 'table.details') }}</a></td></tr>{% endfor %}
+  {% for r in reports %}<tr><td>{{ r.job_id }}</td><td>{{ r.uc }}</td><td><span class="badge {{ r.status }}">{{ r.status }}</span></td><td>{{ r.dataset_id }}</td><td><time data-datetime="{{ r.started_at }}">{{ r.started_at }}</time></td><td><a href="/reports/{{ r.job_id }}">{{ t(request, 'table.details') }}</a></td></tr>{% endfor %}
   </tbody></table>
   {% else %}<p class="muted">{{ t(request, 'home.no_reports') }}</p>{% endif %}
 </section>

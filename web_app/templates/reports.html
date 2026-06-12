@@ -15,7 +15,7 @@
       <thead><tr><th class="select-col"><input type="checkbox" aria-label="{{ t(request, 'action.delete_selected') }}" onclick="var checked = this.checked; this.closest('table').querySelectorAll('tbody input[type=checkbox]').forEach(function(cb){ cb.checked = checked; })"></th><th>{{ t(request, 'table.job') }}</th><th>UC</th><th>{{ t(request, 'table.status') }}</th><th>{{ t(request, 'table.dataset') }}</th><th>{{ t(request, 'table.started') }}</th><th>{{ t(request, 'table.finished') }}</th><th></th></tr></thead>
       <tbody>
       {% for r in reports %}
-      <tr><td><input type="checkbox" name="job_ids" value="{{ r.job_id }}" aria-label="{{ r.job_id }}"></td><td>{{ r.job_id }}</td><td>{{ r.uc }}</td><td><span class="badge {{ r.status }}">{{ r.status }}</span></td><td>{{ r.dataset_id }}</td><td>{{ r.started_at }}</td><td>{{ r.finished_at }}</td><td><a href="/reports/{{ r.job_id }}">{{ t(request, 'table.details') }}</a></td></tr>
+      <tr><td><input type="checkbox" name="job_ids" value="{{ r.job_id }}" aria-label="{{ r.job_id }}"></td><td>{{ r.job_id }}</td><td>{{ r.uc }}</td><td><span class="badge {{ r.status }}">{{ r.status }}</span></td><td>{{ r.dataset_id }}</td><td><time data-datetime="{{ r.started_at }}">{{ r.started_at }}</time></td><td>{% if r.finished_at %}<time data-datetime="{{ r.finished_at }}">{{ r.finished_at }}</time>{% else %}-{% endif %}</td><td><a href="/reports/{{ r.job_id }}">{{ t(request, 'table.details') }}</a></td></tr>
       {% endfor %}
       </tbody>
     </table>

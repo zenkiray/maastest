@@ -100,6 +100,54 @@
     next.searchParams.set('selected_channel_slot', channelSlot);
     return next.pathname + next.search;
   }
+  function browserTimeZone() {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    } catch (_error) {
+      return '';
+    }
+  }
+  function formatDateTimes(root) {
+    const timeZone = browserTimeZone();
+    const options = {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      timeZoneName: 'short'
+    };
+    if (timeZone) options.timeZone = timeZone;
+    let formatter = null;
+    try {
+      formatter = new Intl.DateTimeFormat(undefined, options);
+    } catch (_error) {
+      formatter = null;
+    }
+    root.querySelectorAll('time[data-datetime]').forEach(function (node) {
+      const raw = node.getAttribute('data-datetime') || '';
+      if (!raw || raw === '-') return;
+      const parsed = new Date(raw);
+      if (!formatter || Number.isNaN(parsed.getTime())) {
+        node.textContent = raw;
+        node.title = raw;
+        return;
+      }
+      node.textContent = formatter.format(parsed);
+      node.title = raw + (timeZone ? ' · ' + timeZone : '');
+    });
+  }
+  function updatePdfLinks(root) {
+    const timeZone = browserTimeZone();
+    if (!timeZone) return;
+    root.querySelectorAll('a[data-pdf-download]').forEach(function (link) {
+      const next = new URL(link.getAttribute('href'), window.location.href);
+      next.searchParams.set('tz', timeZone);
+      link.setAttribute('href', next.pathname + next.search);
+    });
+  }
   async function refresh(el, forcedChannelSlot) {
     const url = el.getAttribute('hx-get');
     if (!url) return;
@@ -135,6 +183,8 @@
         restoreTabs(el, tabState);
         bindTabs(el);
         bindChannelDots(el);
+        formatDateTimes(el);
+        updatePdfLinks(el);
       }
     } catch (error) {
       if (el.dataset.refreshSeq !== String(refreshSeq)) return;
@@ -144,6 +194,8 @@
   function boot() {
     bindTabs(document);
     bindChannelDots(document);
+    formatDateTimes(document);
+    updatePdfLinks(document);
     document.querySelectorAll('[hx-get]').forEach(function (el) {
       const trigger = el.getAttribute('hx-trigger') || '';
       if (trigger.includes('load')) refresh(el);

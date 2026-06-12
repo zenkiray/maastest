@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 from urllib import error, request
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -1252,9 +1253,50 @@ def pdf_watermark_label(report: dict[str, Any]) -> str:
     return (cleaned or "platform").upper()
 
 
-def report_date_label(report: dict[str, Any]) -> str:
+def parse_report_datetime(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text or text == "-":
+        return None
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def resolve_timezone(tz_name: str | None) -> ZoneInfo | None:
+    if not tz_name:
+        return None
+    try:
+        return ZoneInfo(str(tz_name))
+    except Exception:
+        return None
+
+
+def format_report_datetime(value: Any, tz_name: str | None = None) -> str:
+    target_tz = resolve_timezone(tz_name)
+    if not target_tz:
+        return str(value or "-")
+    parsed = parse_report_datetime(value)
+    if not parsed:
+        return str(value or "-")
+    parsed = parsed.astimezone(target_tz)
+    return parsed.strftime("%Y-%m-%d %H:%M:%S %Z")
+
+
+def report_date_label(report: dict[str, Any], tz_name: str | None = None) -> str:
+    target_tz = resolve_timezone(tz_name)
     for key in ("started_at", "finished_at", "created_at"):
         value = str(report.get(key) or "")
+        if target_tz:
+            parsed = parse_report_datetime(value)
+            if parsed:
+                parsed = parsed.astimezone(target_tz)
+                return parsed.strftime("%Y-%m-%d_%H-%M-%S")
         match = re.search(r"(\d{4}-\d{2}-\d{2})(?:[T\s](\d{2}):(\d{2}):(\d{2}))?", value)
         if match:
             if match.group(2):
@@ -1274,11 +1316,11 @@ def safe_filename_component(value: Any, fallback: str = "value", ascii_only: boo
     return text or fallback
 
 
-def report_pdf_filename(report: dict[str, Any], data: dict[str, Any], ascii_only: bool = False) -> str:
+def report_pdf_filename(report: dict[str, Any], data: dict[str, Any], ascii_only: bool = False, tz_name: str | None = None) -> str:
     metrics = data.get("required_metrics") if isinstance(data.get("required_metrics"), dict) else {}
     uc = safe_filename_component(metrics.get("uc") or report.get("uc") or "uc", "uc", ascii_only)
     platform = safe_filename_component(infer_platform_label(report), "platform", ascii_only)
-    date_label = safe_filename_component(report_date_label(report), "date", ascii_only)
+    date_label = safe_filename_component(report_date_label(report, tz_name), "date", ascii_only)
     return f"{uc}_{platform}_{date_label}.pdf"
 
 
@@ -1387,7 +1429,7 @@ def fmt_token_triplet(values: dict[str, Any]) -> str:
     return f"{values.get('sum', 0)} / {fmt_value(values.get('p50'))} / {fmt_value(values.get('p95'))}"
 
 
-def generate_report_pdf(job_id: str, report: dict[str, Any], data: dict[str, Any]) -> bytes:
+def generate_report_pdf(job_id: str, report: dict[str, Any], data: dict[str, Any], tz_name: str | None = None) -> bytes:
     try:
         from reportlab.lib import colors
         from reportlab.lib.enums import TA_LEFT
@@ -1452,6 +1494,8 @@ def generate_report_pdf(job_id: str, report: dict[str, Any], data: dict[str, Any
     m = data["required_metrics"]
     currency = data["cost"]["currency"]
     platform_label = pdf_watermark_label(report)
+    started_label = format_report_datetime(report.get("started_at"), tz_name)
+    finished_label = format_report_datetime(report.get("finished_at"), tz_name)
     logo_path = ROOT / "web_app" / "static" / "assets" / "client-logo.jpg"
     story: list[Any] = [
     ]
@@ -1472,7 +1516,7 @@ def generate_report_pdf(job_id: str, report: dict[str, Any], data: dict[str, Any
         p(f"Platform: {platform_label}", h2_style),
         p(f"Job: {job_id}"),
         p(f"UC: {m.get('uc') or report.get('uc') or '-'} | Dataset: {report.get('dataset_id', '-')} | Status: {report.get('status', '-')}"),
-        p(f"Started: {report.get('started_at', '-')} | Finished: {report.get('finished_at', '-')}"),
+        p(f"Started: {started_label} | Finished: {finished_label}"),
         Spacer(1, 5 * mm),
         p("Executive Summary", h2_style),
         table([
@@ -1543,7 +1587,7 @@ def generate_report_pdf(job_id: str, report: dict[str, Any], data: dict[str, Any
         table([
             ["SLA compliance", m["sla_status"]],
             ["Network RTT", m["network_rtt"]],
-            ["Test window", f"{report.get('started_at', '-')} - {report.get('finished_at', '-')}. {m['test_window']}"],
+            ["Test window", f"{started_label} - {finished_label}. {m['test_window']}"],
             ["Token source", "Server usage field when available; missing fields are shown as 0/N/A."],
         ], [45 * mm, 180 * mm]),
     ]
@@ -2018,15 +2062,15 @@ def report_detail(request: Request, job_id: str) -> HTMLResponse:
 
 
 @app.get("/reports/{job_id}/pdf")
-def report_pdf(job_id: str) -> Response:
+def report_pdf(job_id: str, tz: str = Query("")) -> Response:
     report = report_lookup(job_id)
     raw_path = Path(report["raw_log_path"]) if report.get("raw_log_path") else None
     summary_path = Path(report["summary_path"]) if report.get("summary_path") else None
     pricing = load_pricing()
     data = summarize_report(raw_path, summary_path, pricing)
-    pdf = generate_report_pdf(job_id, report, data)
-    filename = report_pdf_filename(report, data)
-    fallback_filename = report_pdf_filename(report, data, ascii_only=True)
+    pdf = generate_report_pdf(job_id, report, data, tz)
+    filename = report_pdf_filename(report, data, tz_name=tz)
+    fallback_filename = report_pdf_filename(report, data, ascii_only=True, tz_name=tz)
     return Response(
         pdf,
         media_type="application/pdf",

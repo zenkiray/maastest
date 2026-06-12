@@ -7,7 +7,8 @@
       <span class="badge {{ job.status }}">{{ job.status }}</span>
       <span>{{ t(request, 'job.import_kind') }}</span>
       {% if platform_label is defined and platform_label %}<span class="platform-badge"><small>{{ pick(request, 'Platform', '平台', 'แพลตฟอร์ม') }}</small><strong>{{ platform_label|upper }}</strong></span>{% endif %}
-      <span>{{ job.started_at or job.created_at }}</span>
+      {% set started = job.started_at or job.created_at %}
+      <span><time data-datetime="{{ started }}">{{ started }}</time></span>
     </div>
     <div class="job-head-actions">
     {% if job.status in ['queued', 'running', 'stopping'] %}
