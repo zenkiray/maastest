@@ -27,6 +27,7 @@
     <dt>{{ t(request, 'job.import_mode') }}</dt><dd>{{ job.mode or '-' }}</dd>
     <dt>{{ t(request, 'job.collection') }}</dt><dd>{{ flow.import.collection or '-' }}</dd>
     <dt>{{ t(request, 'job.progress') }}</dt><dd>{{ flow.import.imported_chunks }}{% if flow.import.total_chunks %}/{{ flow.import.total_chunks }}{% endif %}</dd>
+    <dt>{{ t(request, 'job.elapsed') }}</dt><dd>{{ flow.elapsed_text or '-' }}</dd>
     <dt>{{ t(request, 'job.message') }}</dt><dd>{{ flow_message(flow) }}</dd>
   </dl>
 

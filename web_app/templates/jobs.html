@@ -32,7 +32,7 @@
   {% if jobs %}
   <form action="/api/jobs/delete" method="post" onsubmit="return confirm('{{ t(request, 'confirm.delete_selected') }}')">
     <table>
-      <thead><tr><th class="select-col"><input type="checkbox" aria-label="{{ t(request, 'action.delete_selected') }}" onclick="var checked = this.checked; this.closest('table').querySelectorAll('tbody input[type=checkbox]').forEach(function(cb){ cb.checked = checked; })"></th><th>{{ t(request, 'table.job') }}</th><th>{{ t(request, 'table.type') }}</th><th>UC</th><th>{{ t(request, 'table.status') }}</th><th>{{ t(request, 'table.dataset') }}</th><th>{{ t(request, 'table.started') }}</th><th>{{ t(request, 'table.finished') }}</th><th></th></tr></thead>
+      <thead><tr><th class="select-col"><input type="checkbox" aria-label="{{ t(request, 'action.delete_selected') }}" onclick="var checked = this.checked; this.closest('table').querySelectorAll('tbody input[type=checkbox]').forEach(function(cb){ cb.checked = checked; })"></th><th>{{ t(request, 'table.job') }}</th><th>{{ t(request, 'table.type') }}</th><th>UC</th><th>{{ t(request, 'table.status') }}</th><th>{{ t(request, 'table.dataset') }}</th><th>{{ t(request, 'table.started') }}</th><th>{{ t(request, 'table.finished') }}</th><th>{{ t(request, 'table.elapsed') }}</th><th></th></tr></thead>
       <tbody>
       {% for job in jobs %}
       <tr>
@@ -44,6 +44,7 @@
         <td>{{ job.dataset_id }}</td>
         <td>{% set started = job.started_at or job.created_at %}<time data-datetime="{{ started }}">{{ started }}</time></td>
         <td>{% if job.finished_at %}<time data-datetime="{{ job.finished_at }}">{{ job.finished_at }}</time>{% else %}-{% endif %}</td>
+        <td>{{ job.elapsed_text or '-' }}</td>
         <td><a href="/jobs/{{ job.job_id }}">{{ t(request, 'table.details') }}</a></td>
       </tr>
       {% endfor %}

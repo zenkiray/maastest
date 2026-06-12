@@ -304,6 +304,34 @@ def format_seconds(seconds: float | None) -> str:
     return f"{minutes}m {secs:02d}s"
 
 
+def parse_iso_datetime(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text or text == "-":
+        return None
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def job_elapsed_seconds(job: dict[str, Any], now_dt: datetime | None = None) -> float | None:
+    started = parse_iso_datetime(job.get("started_at") or job.get("created_at"))
+    if not started:
+        return None
+    finished = parse_iso_datetime(job.get("finished_at"))
+    end_time = finished or now_dt or datetime.now(timezone.utc).astimezone()
+    return max((end_time - started).total_seconds(), 0.0)
+
+
+def job_elapsed_text(job: dict[str, Any]) -> str:
+    return format_seconds(job_elapsed_seconds(job)) or "-"
+
+
 def stage_type(stage_id: str) -> dict[str, str]:
     type_id = STAGE_TYPE_BY_ID.get(stage_id, "local_python")
     label, zh = STAGE_TYPE_META[type_id]
@@ -567,6 +595,7 @@ def build_flow_state(job: dict[str, Any], selected_channel_id: str = "", selecte
         "completed": completed,
         "total": total,
         "errors": errors,
+        "elapsed_text": job_elapsed_text(job),
         "progress": {
             "completed": progress_completed,
             "total": progress_total,
@@ -869,6 +898,7 @@ def list_jobs(limit: int | None = None, status: str = "", kind: str = "", uc: st
             continue
         if uc and job.get("uc") != uc:
             continue
+        job["elapsed_text"] = job_elapsed_text(job)
         rows.append(job)
     rows.sort(key=lambda row: row.get("started_at") or row.get("created_at") or "", reverse=True)
     return rows[:limit] if limit else rows
@@ -1288,18 +1318,7 @@ def pdf_watermark_label(report: dict[str, Any]) -> str:
 
 
 def parse_report_datetime(value: Any) -> datetime | None:
-    text = str(value or "").strip()
-    if not text or text == "-":
-        return None
-    if text.endswith("Z"):
-        text = f"{text[:-1]}+00:00"
-    try:
-        parsed = datetime.fromisoformat(text)
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed
+    return parse_iso_datetime(value)
 
 
 def resolve_timezone(tz_name: str | None) -> ZoneInfo | None:
