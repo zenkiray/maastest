@@ -117,7 +117,10 @@ def get_path(config: dict[str, Any], dotted: str, default: Any = None) -> Any:
 
 def validate_config(config: dict[str, Any], allow_placeholders: bool = False) -> list[str]:
     problems: list[str] = []
+    reranker_enabled = get_path(config, "reranker.enabled")
     for key in REQUIRED_KEYS:
+        if key.startswith("reranker.") and key != "reranker.enabled" and reranker_enabled is False:
+            continue
         value = get_path(config, key)
         if value is None:
             problems.append(f"missing required key: {key}")
@@ -129,14 +132,13 @@ def validate_config(config: dict[str, Any], allow_placeholders: bool = False) ->
                 problems.append(f"empty required key: {key}")
             if not allow_placeholders and value.startswith("REPLACE_WITH_"):
                 problems.append(f"placeholder value must be replaced: {key}")
-    if get_path(config, "reranker.enabled") is False:
-        problems = [p for p in problems if not p.startswith("placeholder value must be replaced: reranker.")]
-    reranker_params = get_path(config, "reranker.params", {})
-    if not isinstance(reranker_params, dict):
-        problems.append("reranker.params must be a mapping")
-    reranker_format = get_path(config, "reranker.request_format")
-    if reranker_format not in {"openai", "dashscope"}:
-        problems.append("reranker.request_format must be either 'openai' or 'dashscope'")
+    if reranker_enabled is not False:
+        reranker_params = get_path(config, "reranker.params", {})
+        if not isinstance(reranker_params, dict):
+            problems.append("reranker.params must be a mapping")
+        reranker_format = get_path(config, "reranker.request_format")
+        if reranker_format not in {"openai", "dashscope"}:
+            problems.append("reranker.request_format must be either 'openai' or 'dashscope'")
     embedding_params = get_path(config, "embedding.params", {})
     if not isinstance(embedding_params, dict):
         problems.append("embedding.params must be a mapping")

@@ -128,6 +128,7 @@ def main() -> int:
         config["runtime"]["stream"] = False
     if args.no_reranker:
         config["reranker"]["enabled"] = False
+    reranker_enabled = bool(get_path(config, "reranker.enabled"))
     problems = validate_config(config, allow_placeholders=args.allow_example_placeholders or args.dry_run)
     if problems:
         events.emit("stage_error", uc="uc1", stage="validate_config", message="\n".join(problems))
@@ -148,13 +149,17 @@ def main() -> int:
         item_id = row["question_id"]
         events.emit("request_started", uc="uc1", item_id=item_id, run_index=run_index, concurrency=concurrency, stage="load_question", message="Start FAQ case / 开始问答案例")
         if args.dry_run:
-            for stage, message in [
+            dry_run_stages = [
                 ("embed_query", "Embed customer question / 生成问题向量"),
                 ("search_knowledge", "Search knowledge base / 检索知识库"),
-                ("rank_evidence", "Rank supporting evidence / 排序证据"),
+            ]
+            if reranker_enabled:
+                dry_run_stages.append(("rank_evidence", "Rank supporting evidence / 排序证据"))
+            dry_run_stages += [
                 ("generate_answer", "Generate answer / 生成答复"),
                 ("record_metrics", "Record benchmark metrics / 记录测试指标"),
-            ]:
+            ]
+            for stage, message in dry_run_stages:
                 payload = {"output_preview": "MOCK_ANSWER: would embed query, search Qdrant, optionally rerank, then stream LLM answer."} if stage == "generate_answer" else {}
                 events.emit("stage_done", uc="uc1", item_id=item_id, run_index=run_index, concurrency=concurrency, stage=stage, message=message, **payload)
             events.emit("request_done", uc="uc1", item_id=item_id, run_index=run_index, concurrency=concurrency, status="ok", stage="record_metrics", message="FAQ case complete / 问答案例完成")
@@ -187,9 +192,12 @@ def main() -> int:
             events.emit("stage_started", uc="uc1", item_id=item_id, run_index=run_index, concurrency=concurrency, stage="search_knowledge", message="Search knowledge base / 检索知识库")
             hits = qdrant_search(config, vector, int(get_path(config, "runtime.top_k")))
             events.emit("stage_done", uc="uc1", item_id=item_id, run_index=run_index, concurrency=concurrency, stage="search_knowledge", hit_count=len(hits))
-            events.emit("stage_started", uc="uc1", item_id=item_id, run_index=run_index, concurrency=concurrency, stage="rank_evidence", message="Rank supporting evidence / 排序证据")
-            ranked = rerank(config, row["question"], hits)
-            events.emit("stage_done", uc="uc1", item_id=item_id, run_index=run_index, concurrency=concurrency, stage="rank_evidence", hit_count=len(ranked))
+            if reranker_enabled:
+                events.emit("stage_started", uc="uc1", item_id=item_id, run_index=run_index, concurrency=concurrency, stage="rank_evidence", message="Rank supporting evidence / 排序证据")
+                ranked = rerank(config, row["question"], hits)
+                events.emit("stage_done", uc="uc1", item_id=item_id, run_index=run_index, concurrency=concurrency, stage="rank_evidence", hit_count=len(ranked))
+            else:
+                ranked = hits
             context = "\n\n".join(f"[{h['payload']['article_id']}]\n{h['payload']['text']}" for h in ranked)
             messages = [
                 {"role": "system", "content": "You are a compliant CardX/AutoX banking FAQ assistant. Answer only from retrieved context. Do not ask for OTP, PIN, password, or full card number."},

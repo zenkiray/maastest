@@ -121,8 +121,8 @@
     {% if uc == 'uc1' %}
     <label><span class="field-title">{{ t(request, 'uc.evidence_ranking') }}</span>
       <select name="no_reranker">
-        <option value="">{{ t(request, 'option.reranker_on') }}</option>
-        <option value="1">{{ t(request, 'option.reranker_off') }}</option>
+        <option value="" {% if not reranker_disabled %}selected{% endif %}>{{ t(request, 'option.reranker_on') }}</option>
+        <option value="1" {% if reranker_disabled %}selected{% endif %}>{{ t(request, 'option.reranker_off') }}</option>
       </select>
       <span>{{ t(request, 'uc.evidence_ranking_help') }}</span>
     </label>

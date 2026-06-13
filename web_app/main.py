@@ -82,6 +82,19 @@ UC_FLOW_STAGES = {
     ],
 }
 
+
+def flow_stage_defs(kind: str, reranker_disabled: bool = False) -> list[tuple[str, str, str]]:
+    stages = list(UC_FLOW_STAGES.get(kind, []))
+    if kind == "uc1" and reranker_disabled:
+        stages = [stage for stage in stages if stage[0] != "rank_evidence"]
+    return stages
+
+
+def job_reranker_disabled(job: dict[str, Any]) -> bool:
+    params = job.get("params") if isinstance(job.get("params"), dict) else {}
+    return str(job.get("uc") or "") == "uc1" and bool(params.get("no_reranker"))
+
+
 STAGE_TYPE_META = {
     "local_python": ("Python", "本地 Python"),
     "embedding_model": ("Embedding", "Embedding 模型"),
@@ -342,7 +355,7 @@ def build_flow_state(job: dict[str, Any], selected_channel_id: str = "", selecte
     events = read_event_log(Path(job["event_log_path"]) if job.get("event_log_path") else None)
     now_ts = time.time()
     kind = flow_kind(job)
-    stage_defs = UC_FLOW_STAGES.get(kind, [])
+    stage_defs = flow_stage_defs(kind, job_reranker_disabled(job))
     stages = [{"id": sid, "label": label, "zh": zh, "status": "pending", "started": 0, "done": 0, "errors": 0, "display_count": "", "type": stage_type(sid)} for sid, label, zh in stage_defs]
     by_id = {stage["id"]: stage for stage in stages}
     started_items: dict[str, set[str]] = {stage["id"]: set() for stage in stages}
@@ -1927,7 +1940,8 @@ async def delete_selected_jobs(request: Request) -> RedirectResponse:
 
 
 def uc_defaults(uc: str) -> dict[str, Any]:
-    flow = [{"id": sid, "label": label, "zh": zh, "status": "pending", "duration_text": "", "type": stage_type(sid)} for sid, label, zh in UC_FLOW_STAGES[uc]]
+    reranker_disabled = uc == "uc1" and get_path(load_effective_config(), "reranker.enabled") is False
+    flow = [{"id": sid, "label": label, "zh": zh, "status": "pending", "duration_text": "", "type": stage_type(sid)} for sid, label, zh in flow_stage_defs(uc, reranker_disabled)]
     flow_lookup = {stage["id"]: stage for stage in flow}
     uc2_parallel = None
     if uc == "uc2":
@@ -1950,6 +1964,7 @@ def uc_defaults(uc: str) -> dict[str, Any]:
         "flow": flow,
         "flow_layout": "uc2_parallel" if uc == "uc2" else "linear",
         "uc2_parallel": uc2_parallel,
+        "reranker_disabled": reranker_disabled,
     }
 
 
@@ -2013,6 +2028,7 @@ def start_job(
     event_log = JOBS_DIR / f"{job_id}_events.jsonl"
     script = "run_uc1_rag.py" if uc == "uc1" else "run_uc2_agents.py"
     limit, concurrency_levels, runs_per_platform = preset_values(uc, test_size, load_level, custom_limit, custom_concurrency_levels, custom_runs_per_platform)
+    effective_no_reranker = uc == "uc1" and (bool(no_reranker) or get_path(config, "reranker.enabled") is False)
     cmd = [sys.executable, str(SCRIPTS_DIR / script), "--config", str(config_path.relative_to(ROOT)), "--data-dir", str(Path(meta["data_dir"]).resolve()), "--concurrency-levels", concurrency_levels, "--runs-per-platform", str(runs_per_platform), "--timeout-seconds", str(timeout_seconds)]
     cmd += ["--event-log", str(event_log)]
     if limit > 0:
@@ -2021,10 +2037,10 @@ def start_job(
         cmd.append("--dry-run")
     if no_stream:
         cmd.append("--no-stream")
-    if uc == "uc1" and no_reranker:
+    if effective_no_reranker:
         cmd.append("--no-reranker")
     pricing = load_pricing()
-    job = {"job_id": job_id, "kind": "uc_run", "uc": uc, "dataset_id": dataset_id, "config": CONFIG_LOCAL.name, "platform_label": platform_label, "status": "queued", "created_at": now_iso(), "event_log_path": str(event_log), "params": {"test_size": test_size, "load_level": load_level, "limit": limit, "concurrency_levels": concurrency_levels, "runs_per_platform": runs_per_platform, "timeout_seconds": timeout_seconds, "dry_run": bool(dry_run), "no_stream": bool(no_stream), "no_reranker": bool(no_reranker), "platform_label": platform_label}, "pricing": pricing}
+    job = {"job_id": job_id, "kind": "uc_run", "uc": uc, "dataset_id": dataset_id, "config": CONFIG_LOCAL.name, "platform_label": platform_label, "status": "queued", "created_at": now_iso(), "event_log_path": str(event_log), "params": {"test_size": test_size, "load_level": load_level, "limit": limit, "concurrency_levels": concurrency_levels, "runs_per_platform": runs_per_platform, "timeout_seconds": timeout_seconds, "dry_run": bool(dry_run), "no_stream": bool(no_stream), "no_reranker": effective_no_reranker, "platform_label": platform_label}, "pricing": pricing}
     save_job(job)
     thread = threading.Thread(target=run_subprocess_job, args=(job, cmd), daemon=True)
     thread.start()
