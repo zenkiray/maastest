@@ -885,6 +885,12 @@ def save_report_index(rows: list[dict[str, Any]]) -> None:
     write_json(REPORT_INDEX, rows)
 
 
+def add_elapsed_text(row: dict[str, Any]) -> dict[str, Any]:
+    enriched = dict(row)
+    enriched["elapsed_text"] = job_elapsed_text(enriched)
+    return enriched
+
+
 def job_path(job_id: str) -> Path:
     return JOBS_DIR / f"{job_id}.json"
 
@@ -1763,7 +1769,7 @@ def logout() -> RedirectResponse:
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request) -> HTMLResponse:
-    reports = load_report_index()[:5]
+    reports = [add_elapsed_text(row) for row in load_report_index()[:5]]
     return templates.TemplateResponse(request, "index.html", {"datasets": list_datasets(), "config_ready": local_config_ready(), "reports": reports, "jobs": list_jobs(5)})
 
 
@@ -2112,6 +2118,7 @@ def reports_page(request: Request, uc: str = "", status: str = "") -> HTMLRespon
         rows = [row for row in rows if row.get("uc") == uc]
     if status:
         rows = [row for row in rows if row.get("status") == status]
+    rows = [add_elapsed_text(row) for row in rows]
     return templates.TemplateResponse(request, "reports.html", {"reports": rows, "filters": {"uc": uc, "status": status}})
 
 
@@ -2124,7 +2131,7 @@ async def delete_selected_reports(request: Request) -> RedirectResponse:
 
 @app.get("/reports/{job_id}", response_class=HTMLResponse)
 def report_detail(request: Request, job_id: str) -> HTMLResponse:
-    report = report_lookup(job_id)
+    report = add_elapsed_text(report_lookup(job_id))
     raw_path = Path(report["raw_log_path"]) if report.get("raw_log_path") else None
     summary_path = Path(report["summary_path"]) if report.get("summary_path") else None
     pricing = load_pricing()
@@ -2157,7 +2164,7 @@ def delete_report(job_id: str) -> RedirectResponse:
 
 @app.get("/api/reports")
 def api_reports() -> list[dict[str, Any]]:
-    return load_report_index()
+    return [add_elapsed_text(row) for row in load_report_index()]
 
 
 @app.get("/api/reports/{job_id}")
@@ -2166,6 +2173,7 @@ def api_report(job_id: str) -> dict[str, Any]:
     report = next((row for row in reports if row.get("job_id") == job_id), None)
     if not report:
         raise HTTPException(status_code=404, detail="report not found")
+    report = add_elapsed_text(report)
     raw_path = Path(report["raw_log_path"]) if report.get("raw_log_path") else None
     summary_path = Path(report["summary_path"]) if report.get("summary_path") else None
     return {"report": report, "data": summarize_report(raw_path, summary_path, load_pricing())}

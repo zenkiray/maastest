@@ -21,8 +21,8 @@
 <section class="panel">
   <h2>{{ t(request, 'home.recent_reports') }}</h2>
   {% if reports %}
-  <table><thead><tr><th>{{ t(request, 'table.job') }}</th><th>UC</th><th>{{ t(request, 'table.status') }}</th><th>{{ t(request, 'table.dataset') }}</th><th>{{ t(request, 'table.started') }}</th><th></th></tr></thead><tbody>
-  {% for r in reports %}<tr><td>{{ r.job_id }}</td><td>{{ r.uc }}</td><td><span class="badge {{ r.status }}">{{ r.status }}</span></td><td>{{ r.dataset_id }}</td><td><time data-datetime="{{ r.started_at }}">{{ r.started_at }}</time></td><td><a href="/reports/{{ r.job_id }}">{{ t(request, 'table.details') }}</a></td></tr>{% endfor %}
+  <table><thead><tr><th>{{ t(request, 'table.job') }}</th><th>UC</th><th>{{ t(request, 'table.status') }}</th><th>{{ t(request, 'table.dataset') }}</th><th>{{ t(request, 'table.started') }}</th><th>{{ t(request, 'table.elapsed') }}</th><th></th></tr></thead><tbody>
+  {% for r in reports %}<tr><td>{{ r.job_id }}</td><td>{{ r.uc }}</td><td><span class="badge {{ r.status }}">{{ r.status }}</span></td><td>{{ r.dataset_id }}</td><td><time data-datetime="{{ r.started_at }}">{{ r.started_at }}</time></td><td>{{ r.elapsed_text or '-' }}</td><td><a href="/reports/{{ r.job_id }}">{{ t(request, 'table.details') }}</a></td></tr>{% endfor %}
   </tbody></table>
   {% else %}<p class="muted">{{ t(request, 'home.no_reports') }}</p>{% endif %}
 </section>
