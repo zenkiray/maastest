@@ -8,10 +8,38 @@
       <code>{{ collection or pick(request, 'Not configured', '未配置', 'ยังไม่ได้ตั้งค่า') }}</code>
     </div>
     <div class="actions">
-      <a class="button secondary" href="/datasets">{{ pick(request, 'Initialize index', '初始化索引', 'เริ่มต้นดัชนี') }}</a>
+      <a class="button secondary" href="/datasets">{{ pick(request, 'Manage datasets', '管理数据集', 'จัดการชุดข้อมูล') }}</a>
       <a class="button secondary" href="/settings/config">{{ pick(request, 'Open settings', '打开设置', 'เปิดการตั้งค่า') }}</a>
     </div>
   </div>
+  <form action="/api/qdrant/init" method="post" class="form-grid">
+    <label>
+      <span class="field-title">{{ pick(request, 'Dataset for index rebuild', '选择数据集重建索引', 'ชุดข้อมูลสำหรับสร้างดัชนีใหม่') }}</span>
+      <select name="dataset_id" {% if not valid_datasets %}disabled{% endif %}>
+        {% for ds in valid_datasets %}
+          <option value="{{ ds.dataset_id }}">{{ ds.name }} ({{ ds.dataset_id }})</option>
+        {% endfor %}
+      </select>
+      <span>{{ pick(request, 'Use an already uploaded dataset package. No re-upload is required.', '使用已经上传的数据包，不需要每次重新上传。', 'ใช้ชุดข้อมูลที่อัปโหลดไว้แล้ว ไม่ต้องอัปโหลดใหม่ทุกครั้ง') }}</span>
+    </label>
+    <label>
+      <span class="field-title">{{ pick(request, 'Import mode', '导入模式', 'โหมดนำเข้า') }}</span>
+      <select name="mode">
+        <option value="overwrite">{{ pick(request, 'Full rebuild', '全量重建', 'สร้างใหม่ทั้งหมด') }}</option>
+        <option value="incremental">{{ pick(request, 'Incremental upsert', '增量追加', 'นำเข้าแบบเพิ่ม') }}</option>
+      </select>
+      <span>{{ pick(request, 'Full rebuild deletes and recreates the collection first, so vector dimension changes are handled safely.', '全量重建会先删除并重建集合，因此可以安全处理向量维度变化。', 'โหมดสร้างใหม่ทั้งหมดจะลบและสร้าง collection ใหม่ก่อน จึงรองรับการเปลี่ยน dimension ของ vector ได้อย่างปลอดภัย') }}</span>
+    </label>
+    <label>
+      <span class="field-title">{{ pick(request, 'Batch size', '批量大小', 'ขนาด batch') }}</span>
+      <input type="number" name="batch_size" value="10" min="1">
+      <span>{{ pick(request, 'Number of texts per embedding batch.', '每批 embedding 的文本数量。', 'จำนวนข้อความต่อ embedding batch') }}</span>
+    </label>
+    <button type="submit" {% if not config_ready or not valid_datasets %}disabled{% endif %}>{{ pick(request, 'Initialize index', '初始化索引', 'เริ่มต้นดัชนี') }}</button>
+  </form>
+  {% if not valid_datasets %}
+    <p class="hint">{{ pick(request, 'No valid uploaded dataset is available. Upload a dataset package from Datasets first.', '当前没有有效数据集，请先在数据集页面上传数据包。', 'ยังไม่มีชุดข้อมูลที่ถูกต้อง กรุณาอัปโหลดจากหน้า Datasets ก่อน') }}</p>
+  {% endif %}
   <form method="get" class="form-grid">
     <label><span class="field-title">Article ID</span><input name="article_id" value="{{ filters.article_id }}"></label>
     <label><span class="field-title">{{ pick(request, 'Product', '产品', 'ผลิตภัณฑ์') }}</span><input name="product" value="{{ filters.product }}"></label>

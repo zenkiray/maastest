@@ -1819,6 +1819,8 @@ def init_qdrant(dataset_id: str, mode: str = Form("overwrite"), batch_size: int 
     meta = read_json(dataset_meta_path(dataset_id), None)
     if not meta:
         raise HTTPException(status_code=404, detail="dataset not found")
+    if not meta.get("valid"):
+        raise HTTPException(status_code=400, detail="dataset is invalid")
     config_errors = validate_local_config()
     if config_errors:
         return RedirectResponse("/settings/config?error=Please%20complete%20configuration%20first", status_code=303)
@@ -1835,6 +1837,11 @@ def init_qdrant(dataset_id: str, mode: str = Form("overwrite"), batch_size: int 
     meta["qdrant"] = {"last_job_id": job_id, "mode": mode, "config": CONFIG_LOCAL.name, "started_at": now_iso()}
     write_json(dataset_meta_path(dataset_id), meta)
     return RedirectResponse(f"/jobs/{job_id}", status_code=303)
+
+
+@app.post("/api/qdrant/init")
+def init_qdrant_from_index_page(dataset_id: str = Form(...), mode: str = Form("overwrite"), batch_size: int = Form(10)) -> RedirectResponse:
+    return init_qdrant(dataset_id, mode, batch_size)
 
 
 @app.get("/qdrant", response_class=HTMLResponse)
@@ -1906,8 +1913,13 @@ def qdrant_page(request: Request, article_id: str = "", product: str = "", categ
     prev_offset = history_values[-1] if history_values else ""
     prev_history = encode_cursor_history(history_values[:-1])
     next_history = encode_cursor_history(history_values + [offset])
+    datasets = list_datasets()
+    valid_datasets = [dataset for dataset in datasets if dataset.get("valid")]
     return templates.TemplateResponse(request, "qdrant.html", {
         "collection": collection,
+        "datasets": datasets,
+        "valid_datasets": valid_datasets,
+        "config_ready": local_config_ready(),
         "points": points,
         "error": error_text,
         "filters": {"article_id": article_id, "product": product, "category": category, "topic_id": topic_id, "limit": limit},
